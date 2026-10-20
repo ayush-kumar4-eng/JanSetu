@@ -1,0 +1,1354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sahayak (सहायक) — Agentic AI Workforce for Government Scheme Navigation</title>
+    <meta name="description" content="AI-Driven Citizen Empowerment for Last-Mile Indian Welfare Scheme Discovery, Statutory Eligibility Audit, and Application Preparation.">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Hind:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+    <!-- ============================================================== -->
+    <!-- VIEW 1: PUBLIC HOMEPAGE (LANDING PAGE)                          -->
+    <!-- Displayed for unauthenticated visitors                          -->
+    <!-- ============================================================== -->
+    <div id="view-landing" class="landing-view">
+        <!-- Top Public Header -->
+        <header class="public-nav">
+            <div class="nav-container">
+                <div class="brand-block" onclick="showPublicLanding()">
+                    <div class="brand-icon">
+                        <i class="fa-solid fa-landmark-flag"></i>
+                    </div>
+                    <div class="brand-title-wrap">
+                        <span class="hindi-brand">सहायक</span>
+                        <span class="eng-brand">Sahayak</span>
+                    </div>
+                </div>
+
+                <nav class="public-nav-links">
+                    <a href="#section-workforce" class="nav-link">The Workforce</a>
+                    <a href="#section-control" class="nav-link">Citizen Control</a>
+                    <a href="#section-schemes" class="nav-link">Schemes</a>
+                    <button class="btn btn-outline btn-sm" id="btn-open-login" onclick="openAuthModal('demo')">
+                        <i class="fa-solid fa-arrow-right-to-bracket"></i> Sign in
+                    </button>
+                    <button class="btn btn-primary btn-sm" onclick="openAuthModal('demo')">
+                        <span>Demo Access</span>
+                    </button>
+                </nav>
+            </div>
+        </header>
+
+        <!-- Public Hero Section -->
+        <section class="hero-section">
+            <div class="hero-container">
+                <div class="hero-content">
+                    <div class="hero-badge">
+                        <i class="fa-solid fa-shield-halved"></i> Agentic AI Workforce for Citizen Welfare
+                    </div>
+                    <h1 class="hero-title">From eligibility to action.</h1>
+                    <p class="hero-subtitle">
+                        Sahayak coordinates specialized AI agents to help citizens discover government schemes, audit statutory eligibility, organize verified document checklists, draft official applications, and simulate real-time tracking — with explicit consent at every step.
+                    </p>
+                    <div class="hero-cta-group">
+                        <button class="btn btn-primary btn-lg" onclick="handleStartWithNeed()">
+                            <span>Start with your need</span>
+                            <i class="fa-solid fa-arrow-right"></i>
+                        </button>
+                        <button class="btn btn-secondary btn-lg" onclick="startQuickInteractiveDemo()">
+                            <i class="fa-solid fa-play"></i>
+                            <span>Run interactive demo</span>
+                        </button>
+                    </div>
+                    <div class="hero-stat-row">
+                        <div class="stat-pill">
+                            <i class="fa-solid fa-database"></i> <strong>89 Verified Schemes</strong>
+                        </div>
+                        <div class="stat-pill">
+                            <i class="fa-solid fa-building-columns"></i> <strong>Central & State Levels</strong>
+                        </div>
+                        <div class="stat-pill">
+                            <i class="fa-solid fa-user-shield"></i> <strong>100% Simulated & Safe</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Hero Visual: Agent Orchestration Preview -->
+                <div class="hero-visual">
+                    <div class="orchestration-card">
+                        <div class="orchestration-header">
+                            <span class="pulse-dot"></span>
+                            <span>Live Agent Orchestration Pipeline</span>
+                        </div>
+                        <div class="pipeline-flow">
+                            <div class="pipeline-node active">
+                                <div class="node-icon"><i class="fa-solid fa-magnifying-glass"></i></div>
+                                <div class="node-text">
+                                    <strong>Agent 1: Scheme Discovery</strong>
+                                    <span>Qdrant Dense Semantic Retrieval</span>
+                                </div>
+                            </div>
+                            <div class="node-connector"></div>
+                            <div class="pipeline-node">
+                                <div class="node-icon"><i class="fa-solid fa-scale-balanced"></i></div>
+                                <div class="node-text">
+                                    <strong>Agent 2: Statutory Eligibility</strong>
+                                    <span>Age, Land, Income & Category Rules</span>
+                                </div>
+                            </div>
+                            <div class="node-connector"></div>
+                            <div class="pipeline-node">
+                                <div class="node-icon"><i class="fa-solid fa-file-shield"></i></div>
+                                <div class="node-text">
+                                    <strong>Agent 3: Document Readiness</strong>
+                                    <span>Checklist Audit & Demo OCR Locker</span>
+                                </div>
+                            </div>
+                            <div class="node-connector"></div>
+                            <div class="pipeline-node">
+                                <div class="node-icon"><i class="fa-solid fa-file-signature"></i></div>
+                                <div class="node-text">
+                                    <strong>Agent 4: Application Drafter</strong>
+                                    <span>Form Synthesizer with Human-in-the-Loop Consent</span>
+                                </div>
+                            </div>
+                            <div class="node-connector"></div>
+                            <div class="pipeline-node">
+                                <div class="node-icon"><i class="fa-solid fa-timeline"></i></div>
+                                <div class="node-text">
+                                    <strong>Agent 5: Tracker & Next Action</strong>
+                                    <span>Persistent SQLite Registry & Milestones</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Workforce Section -->
+        <section id="section-workforce" class="public-section">
+            <div class="section-container">
+                <div class="section-title-wrap">
+                    <span class="sub-badge">Specialized Agents</span>
+                    <h2>Meet the Sahayak AI Workforce</h2>
+                    <p>Unlike generic conversational chatbots that generate long text essays, Sahayak deploys task-oriented autonomous agents designed for structured public welfare execution.</p>
+                </div>
+
+                <div class="agents-grid">
+                    <div class="agent-card">
+                        <div class="agent-avatar"><i class="fa-solid fa-compass"></i></div>
+                        <span class="agent-tag">Agent 1</span>
+                        <h3>Scheme Discovery Agent</h3>
+                        <p>Translates colloquial citizen needs into structured search vectors, queries Qdrant dense index, ranks 6–7 schemes, and flags top recommendations.</p>
+                    </div>
+                    <div class="agent-card">
+                        <div class="agent-avatar"><i class="fa-solid fa-scale-balanced"></i></div>
+                        <span class="agent-tag">Agent 2</span>
+                        <h3>Eligibility Assessor Agent</h3>
+                        <p>Loads statutory scheme criteria from SQLite, compares against citizen demographic attributes, and flags verified criteria, exclusions, and items needing confirmation.</p>
+                    </div>
+                    <div class="agent-card">
+                        <div class="agent-avatar"><i class="fa-solid fa-file-circle-check"></i></div>
+                        <span class="agent-tag">Agent 3</span>
+                        <h3>Document Readiness Agent</h3>
+                        <p>Audits required statutory documents against the citizen's demo locker, identifies missing files, and offers simulated OCR verification.</p>
+                    </div>
+                    <div class="agent-card">
+                        <div class="agent-avatar"><i class="fa-solid fa-pen-nib"></i></div>
+                        <span class="agent-tag">Agent 4</span>
+                        <h3>Application Drafter Agent</h3>
+                        <p>Synthesizes verified profile data into a reviewable, editable formal application package. Enforces mandatory citizen consent before simulation.</p>
+                    </div>
+                    <div class="agent-card">
+                        <div class="agent-avatar"><i class="fa-solid fa-chart-line"></i></div>
+                        <span class="agent-tag">Agent 5</span>
+                        <h3>Lifecycle Tracker Agent</h3>
+                        <p>Generates simulated reference numbers, logs scrutiny events, updates dashboard metrics, and advises the citizen on their next best action.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Citizen Control & Safety Section -->
+        <section id="section-control" class="public-section bg-alt">
+            <div class="section-container">
+                <div class="section-title-wrap">
+                    <span class="sub-badge">Ethical & Safe AI</span>
+                    <h2>Citizen Control & Safety Principles</h2>
+                    <p>Designed for trust, transparency, and safety in last-mile government navigation.</p>
+                </div>
+
+                <div class="control-grid">
+                    <div class="control-card">
+                        <i class="fa-solid fa-user-check"></i>
+                        <h4>Human-in-the-Loop Approval</h4>
+                        <p>No application is submitted automatically. The citizen retains complete control and must explicitly review and check the approval authorization.</p>
+                    </div>
+                    <div class="control-card">
+                        <i class="fa-solid fa-lock"></i>
+                        <h4>Zero Identity Leaks</h4>
+                        <p>Sensitive identity proofs and Aadhaar numbers are never sent to external LLMs. Demonstrations use synthetic demo data only.</p>
+                    </div>
+                    <div class="control-card">
+                        <i class="fa-solid fa-code-compare"></i>
+                        <h4>Deterministic Rule Engine</h4>
+                        <p>Eligibility is never left to LLM guesswork. Statutory age caps, land limits, and income exclusions are evaluated with deterministic application logic.</p>
+                    </div>
+                    <div class="control-card">
+                        <i class="fa-solid fa-laptop-code"></i>
+                        <h4>Safe Simulated Sandboxing</h4>
+                        <p>All submission endpoints execute strictly in simulated sandbox mode. Sahayak never attempts unauthorized live portal submissions.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Public Scheme Directory Preview Section -->
+        <section id="section-schemes" class="public-section">
+            <div class="section-container">
+                <div class="section-header-row">
+                    <div>
+                        <span class="sub-badge">Official Repository</span>
+                        <h2>Explore Verified Welfare Schemes</h2>
+                        <p>Over 89 verified central and state welfare initiatives with statutory rules and official government portal links.</p>
+                    </div>
+                    <button class="btn btn-outline" onclick="openPublicDirectory()">
+                        <span>Open Full Directory</span> <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
+
+                <div class="public-schemes-preview-grid" id="public-schemes-preview">
+                    <!-- Populated via JS -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Public Footer -->
+        <footer class="public-footer">
+            <div class="footer-container">
+                <div class="footer-brand">
+                    <div class="brand-title-wrap">
+                        <span class="hindi-brand">सहायक</span>
+                        <span class="eng-brand">Sahayak</span>
+                    </div>
+                    <p>Agentic AI Workforce for Government Scheme Navigation</p>
+                </div>
+                <div class="footer-disclaimer">
+                    <p><strong>Prototype Disclaimer:</strong> Sahayak complements existing government platforms (myScheme, India.gov.in) and is an independent AI prototype demonstration. <strong>Sahayak is not an official government portal.</strong> All applications, reference IDs, and timeline scrutiny milestones are simulated for demonstration purposes.</p>
+                </div>
+                <div class="footer-copy">
+                    &copy; 2025–2026 Sahayak AI Prototype. Powered by Qdrant Dense Vector Search, Groq LLM Inference & SQLite Persistence.
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- VIEW 2: AUTHENTICATION MODAL                                   -->
+    <!-- Supports Demo Personas, Sign In, and Registration              -->
+    <!-- ============================================================== -->
+    <div class="modal-overlay" id="auth-modal" style="display: none;">
+        <div class="auth-modal-card">
+            <div class="auth-modal-header">
+                <div class="auth-modal-title">
+                    <i class="fa-solid fa-shield-halved"></i>
+                    <h3>Sahayak Citizen Access</h3>
+                </div>
+                <button class="modal-close-btn" onclick="closeAuthModal()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <!-- Auth Mode Tabs -->
+            <div class="auth-tabs">
+                <button class="auth-tab-btn active" data-auth-tab="auth-tab-demo" onclick="switchAuthTab('auth-tab-demo')">
+                    <i class="fa-solid fa-bolt"></i> Instant Demo Access
+                </button>
+                <button class="auth-tab-btn" data-auth-tab="auth-tab-signin" onclick="switchAuthTab('auth-tab-signin')">
+                    <i class="fa-solid fa-arrow-right-to-bracket"></i> Sign In
+                </button>
+                <button class="auth-tab-btn" data-auth-tab="auth-tab-register" onclick="switchAuthTab('auth-tab-register')">
+                    <i class="fa-solid fa-user-plus"></i> Register
+                </button>
+            </div>
+
+            <!-- Tab 1: Instant Demo Personas -->
+            <div id="auth-tab-demo" class="auth-tab-content active">
+                <p class="auth-desc">Select a pre-configured, verified demo citizen persona to immediately experience the 5-agent workflow with realistic demographic attributes:</p>
+                
+                <div class="demo-personas-list">
+                    <div class="demo-persona-card" onclick="loginAsDemoPersona('ramesh_farmer')">
+                        <div class="persona-avatar-box farmer-avatar">
+                            <i class="fa-solid fa-wheat-awn"></i>
+                        </div>
+                        <div class="persona-info">
+                            <h4>Ramesh Kumar</h4>
+                            <span class="persona-sub">Small Farmer • Sikar, Rajasthan</span>
+                            <div class="persona-badges">
+                                <span class="badge">1.4 ha Land</span>
+                                <span class="badge">Income: ₹1.2L</span>
+                                <span class="badge">OBC</span>
+                            </div>
+                        </div>
+                        <button class="btn btn-sm btn-primary">Login &rarr;</button>
+                    </div>
+
+                    <div class="demo-persona-card" onclick="loginAsDemoPersona('sunita_artisan')">
+                        <div class="persona-avatar-box vendor-avatar">
+                            <i class="fa-solid fa-basket-shopping"></i>
+                        </div>
+                        <div class="persona-info">
+                            <h4>Sunita Devi</h4>
+                            <span class="persona-sub">Street Vendor / Artisan • Jaipur, Rajasthan</span>
+                            <div class="persona-badges">
+                                <span class="badge">Urban Vendor</span>
+                                <span class="badge">Income: ₹95K</span>
+                                <span class="badge">SC</span>
+                            </div>
+                        </div>
+                        <button class="btn btn-sm btn-primary">Login &rarr;</button>
+                    </div>
+
+                    <div class="demo-persona-card" onclick="loginAsDemoPersona('priya_student')">
+                        <div class="persona-avatar-box student-avatar">
+                            <i class="fa-solid fa-graduation-cap"></i>
+                        </div>
+                        <div class="persona-info">
+                            <h4>Priya Sharma</h4>
+                            <span class="persona-sub">Undergraduate Student • Jaipur, Rajasthan</span>
+                            <div class="persona-badges">
+                                <span class="badge">Higher Ed</span>
+                                <span class="badge">Income: ₹1.8L</span>
+                                <span class="badge">EWS</span>
+                            </div>
+                        </div>
+                        <button class="btn btn-sm btn-primary">Login &rarr;</button>
+                    </div>
+                </div>
+
+                <div class="auth-note">
+                    <i class="fa-solid fa-circle-info"></i> Demo access connects to the live backend and simulates all 5 workflow agents using sandbox SQLite records.
+                </div>
+            </div>
+
+            <!-- Tab 2: Regular Sign In -->
+            <div id="auth-tab-signin" class="auth-tab-content">
+                <form id="form-signin" onsubmit="handleSignInSubmit(event)">
+                    <div class="form-group">
+                        <label for="signin-identifier">Username or Email Address:</label>
+                        <input type="text" id="signin-identifier" placeholder="e.g. ramesh_farmer or sunita@example.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="signin-pass">Demo Passcode (any value accepted):</label>
+                        <input type="password" id="signin-pass" placeholder="••••••••" value="demo123">
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">
+                        <i class="fa-solid fa-arrow-right-to-bracket"></i> Sign In to Dashboard
+                    </button>
+                </form>
+            </div>
+
+            <!-- Tab 3: Citizen Registration -->
+            <div id="auth-tab-register" class="auth-tab-content">
+                <form id="form-register" onsubmit="handleRegisterSubmit(event)">
+                    <div class="form-row-2">
+                        <div class="form-group">
+                            <label for="reg-fullname">Full Name:</label>
+                            <input type="text" id="reg-fullname" placeholder="e.g. Anita Meena" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="reg-username">Username:</label>
+                            <input type="text" id="reg-username" placeholder="e.g. anita_artisan" required>
+                        </div>
+                    </div>
+                    <div class="form-row-2">
+                        <div class="form-group">
+                            <label for="reg-email">Email:</label>
+                            <input type="email" id="reg-email" placeholder="anita@example.com" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="reg-phone">Phone Number:</label>
+                            <input type="tel" id="reg-phone" placeholder="9876543210">
+                        </div>
+                    </div>
+                    <div class="form-row-2">
+                        <div class="form-group">
+                            <label for="reg-occupation">Occupation:</label>
+                            <input type="text" id="reg-occupation" placeholder="e.g. Weaver / Artisan" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="reg-income">Annual Family Income (₹):</label>
+                            <input type="number" id="reg-income" value="100000" step="10000" required>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">
+                        <i class="fa-solid fa-user-plus"></i> Create Profile & Enter Portal
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- VIEW 3: MAIN PORTAL APP (POST-AUTHENTICATION DASHBOARD & WORKFLOW)-->
+    <!-- Displayed when citizen is logged in / in demo session           -->
+    <!-- ============================================================== -->
+    <div id="view-portal" class="portal-layout" style="display: none;">
+        
+        <!-- Top App Navigation -->
+        <header class="app-topbar">
+            <div class="topbar-left">
+                <div class="portal-brand" onclick="navigateToPage('dashboard')">
+                    <div class="brand-icon"><i class="fa-solid fa-landmark-flag"></i></div>
+                    <div class="portal-title">
+                        <span class="hindi-brand">सहायक</span>
+                        <span class="eng-brand">Sahayak</span>
+                    </div>
+                </div>
+
+                <!-- Global Scheme Search -->
+                <div class="global-search-box">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" id="global-scheme-search" placeholder="Search 89 government schemes by keyword or benefit (Press Enter)..." onkeydown="handleGlobalSearch(event)">
+                </div>
+            </div>
+
+            <div class="topbar-right">
+                <!-- Language Selector -->
+                <div class="lang-selector-box">
+                    <i class="fa-solid fa-globe"></i>
+                    <select id="app-lang-select">
+                        <option value="en">English</option>
+                        <option value="hi">हिंदी (Hindi)</option>
+                    </select>
+                </div>
+
+                <!-- Notifications Bell -->
+                <button class="topbar-icon-btn" id="btn-topbar-notify" onclick="toggleNotificationsModal(true)" title="Notifications">
+                    <i class="fa-regular fa-bell"></i>
+                    <span class="notify-badge" id="topbar-notify-count">0</span>
+                </button>
+
+                <!-- Ask Mitra Chatbot Secondary Drawer Button -->
+                <button class="topbar-btn-chat" id="btn-open-chatbot" onclick="toggleChatbot(true)">
+                    <i class="fa-solid fa-robot"></i>
+                    <span>Ask Mitra</span>
+                </button>
+
+                <!-- Profile / Persona Menu -->
+                <div class="profile-chip-menu">
+                    <div class="profile-avatar-pill">
+                        <div class="avatar-letter" id="user-avatar-initial">R</div>
+                        <div class="avatar-details">
+                            <span class="avatar-name" id="user-display-name">Ramesh Kumar</span>
+                            <span class="avatar-role" id="user-display-occupation">Farmer</span>
+                        </div>
+                    </div>
+                    <button class="logout-btn-header" onclick="handleLogout()" title="Sign Out">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Body: Left Sidebar + Page Viewport -->
+        <div class="portal-body">
+            
+            <!-- Left Sidebar Navigation -->
+            <aside class="portal-sidebar">
+                <div class="sidebar-menu">
+                    <button class="sidebar-item active" data-page="dashboard" onclick="navigateToPage('dashboard')">
+                        <i class="fa-solid fa-gauge-high"></i>
+                        <span>Dashboard</span>
+                    </button>
+                    <button class="sidebar-item" data-page="assistant" onclick="navigateToPage('assistant')">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i>
+                        <span>AI Assistant</span>
+                    </button>
+                    <button class="sidebar-item" data-page="schemes" onclick="navigateToPage('schemes')">
+                        <i class="fa-solid fa-compass"></i>
+                        <span>Schemes</span>
+                    </button>
+                    <button class="sidebar-item" data-page="documents" onclick="navigateToPage('documents')">
+                        <i class="fa-solid fa-folder-open"></i>
+                        <span>Documents</span>
+                    </button>
+                    <button class="sidebar-item" data-page="applications" onclick="navigateToPage('applications')">
+                        <i class="fa-solid fa-file-lines"></i>
+                        <span>Applications</span>
+                        <span class="sidebar-counter" id="sidebar-app-count">0</span>
+                    </button>
+                    <button class="sidebar-item" data-page="notifications" onclick="navigateToPage('notifications')">
+                        <i class="fa-solid fa-bell"></i>
+                        <span>Notifications</span>
+                    </button>
+                    <button class="sidebar-item" data-page="profile" onclick="navigateToPage('profile')">
+                        <i class="fa-solid fa-id-card"></i>
+                        <span>Profile</span>
+                    </button>
+                    <button class="sidebar-item" data-page="privacy" onclick="navigateToPage('privacy')">
+                        <i class="fa-solid fa-shield-halved"></i>
+                        <span>Privacy & Consent</span>
+                    </button>
+                </div>
+
+                <!-- Sidebar Persona Switcher Box -->
+                <div class="sidebar-persona-card">
+                    <label for="persona-select-sidebar"><i class="fa-solid fa-user-check"></i> Demo Persona:</label>
+                    <select id="persona-select-sidebar" class="persona-select" onchange="switchPersonaFromSidebar(this.value)">
+                        <!-- Populated by JS -->
+                    </select>
+                </div>
+
+                <div class="sidebar-footer">
+                    <button class="sidebar-logout-btn" onclick="handleLogout()">
+                        <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                        <span>Sign Out</span>
+                    </button>
+                </div>
+            </aside>
+
+            <!-- Main Page Viewport -->
+            <main class="portal-viewport">
+                
+                <!-- ========================================== -->
+                <!-- PAGE 1: DASHBOARD                          -->
+                <!-- ========================================== -->
+                <div id="page-dashboard" class="page-panel active">
+                    
+                    <!-- Welcome Hero Header -->
+                    <div class="dashboard-welcome-banner">
+                        <div class="banner-text">
+                            <h2>Namaste, <span id="dash-citizen-name">Citizen</span>! 🙏</h2>
+                            <p id="dash-citizen-summary">Socio-economic profile loaded. Your AI workforce is ready to audit welfare eligibility and process applications.</p>
+                        </div>
+                        <div class="banner-quick-action">
+                            <button class="btn btn-primary" onclick="navigateToPage('assistant')">
+                                <i class="fa-solid fa-wand-magic-sparkles"></i>
+                                <span>Find Schemes for My Need</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 4 Summary Metric Cards -->
+                    <div class="dashboard-metrics-grid">
+                        <div class="metric-card" onclick="navigateToPage('schemes')">
+                            <div class="metric-icon bg-blue"><i class="fa-solid fa-hand-holding-dollar"></i></div>
+                            <div class="metric-info">
+                                <span class="metric-label">Benefits Discovered</span>
+                                <h3 class="metric-value" id="dash-metric-benefits">₹6,000 / yr+</h3>
+                                <span class="metric-sub">Direct cash & subsidies</span>
+                            </div>
+                        </div>
+
+                        <div class="metric-card" onclick="navigateToPage('applications')">
+                            <div class="metric-icon bg-orange"><i class="fa-solid fa-file-signature"></i></div>
+                            <div class="metric-info">
+                                <span class="metric-label">Applications in Progress</span>
+                                <h3 class="metric-value" id="dash-metric-apps">0</h3>
+                                <span class="metric-sub">Tracked in SQLite registry</span>
+                            </div>
+                        </div>
+
+                        <div class="metric-card" onclick="navigateToPage('documents')">
+                            <div class="metric-icon bg-green"><i class="fa-solid fa-file-shield"></i></div>
+                            <div class="metric-info">
+                                <span class="metric-label">Documents Checked</span>
+                                <h3 class="metric-value" id="dash-metric-docs">3</h3>
+                                <span class="metric-sub">Demo locker records ready</span>
+                            </div>
+                        </div>
+
+                        <div class="metric-card" onclick="navigateToPage('assistant')">
+                            <div class="metric-icon bg-purple"><i class="fa-solid fa-list-check"></i></div>
+                            <div class="metric-info">
+                                <span class="metric-label">Actions Required</span>
+                                <h3 class="metric-value" id="dash-metric-actions">1</h3>
+                                <span class="metric-sub" id="dash-metric-actions-sub">Scheme audit available</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Next Best Action Panel -->
+                    <div class="next-action-card">
+                        <div class="next-action-header">
+                            <div class="action-tag"><i class="fa-solid fa-lightbulb"></i> Your Next Best Action</div>
+                            <span class="priority-badge">High Priority</span>
+                        </div>
+                        <div class="next-action-content">
+                            <div class="action-desc">
+                                <h4 id="dash-next-action-title">Audit Your Eligibility for PM-KISAN ₹6,000 Income Support</h4>
+                                <p id="dash-next-action-desc">Based on your agricultural landholding (1.4 ha in Rajasthan), you meet the statutory eligibility for quarterly direct income support.</p>
+                            </div>
+                            <button class="btn btn-primary" id="btn-next-action-cta" onclick="handleDashboardNextAction()">
+                                <span>Complete Eligibility Audit</span>
+                                <i class="fa-solid fa-arrow-right"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 2-Column Section: Active Applications & Agent Status -->
+                    <div class="dashboard-two-col">
+                        
+                        <!-- Left: Active Applications -->
+                        <div class="dash-block">
+                            <div class="dash-block-header">
+                                <h3><i class="fa-solid fa-clock-rotate-left"></i> Active Applications</h3>
+                                <button class="btn-link" onclick="navigateToPage('applications')">View All</button>
+                            </div>
+                            <div class="dash-apps-container" id="dash-active-apps-list">
+                                <!-- Populated by JS -->
+                            </div>
+                        </div>
+
+                        <!-- Right: Agent Orchestration Status -->
+                        <div class="dash-block">
+                            <div class="dash-block-header">
+                                <h3><i class="fa-solid fa-microchip"></i> Agent Workforce Status</h3>
+                                <span class="status-indicator-live"><i class="fa-solid fa-circle"></i> 5 Agents Online</span>
+                            </div>
+                            <div class="agent-status-stack">
+                                <div class="agent-status-row">
+                                    <div class="agent-mini-icon"><i class="fa-solid fa-compass"></i></div>
+                                    <div class="agent-mini-details">
+                                        <strong>Scheme Discovery Agent</strong>
+                                        <span>Qdrant Cloud Dense Semantic Index (89 schemes)</span>
+                                    </div>
+                                    <span class="status-chip success">Ready</span>
+                                </div>
+                                <div class="agent-status-row">
+                                    <div class="agent-mini-icon"><i class="fa-solid fa-scale-balanced"></i></div>
+                                    <div class="agent-mini-details">
+                                        <strong>Statutory Eligibility Agent</strong>
+                                        <span>Deterministic Rule Verification Engine</span>
+                                    </div>
+                                    <span class="status-chip success">Ready</span>
+                                </div>
+                                <div class="agent-status-row">
+                                    <div class="agent-mini-icon"><i class="fa-solid fa-file-shield"></i></div>
+                                    <div class="agent-mini-details">
+                                        <strong>Document Readiness Agent</strong>
+                                        <span>Checklist Scrutiny & Demo OCR</span>
+                                    </div>
+                                    <span class="status-chip success">Ready</span>
+                                </div>
+                                <div class="agent-status-row">
+                                    <div class="agent-mini-icon"><i class="fa-solid fa-file-signature"></i></div>
+                                    <div class="agent-mini-details">
+                                        <strong>Application Drafter Agent</strong>
+                                        <span>Synthesis Engine & Consent Gate</span>
+                                    </div>
+                                    <span class="status-chip success">Ready</span>
+                                </div>
+                                <div class="agent-status-row">
+                                    <div class="agent-mini-icon"><i class="fa-solid fa-chart-line"></i></div>
+                                    <div class="agent-mini-details">
+                                        <strong>Tracker Agent</strong>
+                                        <span>SQLite Persistence & Milestones</span>
+                                    </div>
+                                    <span class="status-chip success">Ready</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recent AI Activity Log -->
+                    <div class="dash-block mt-4">
+                        <div class="dash-block-header">
+                            <h3><i class="fa-solid fa-list-check"></i> Recent AI Activity</h3>
+                        </div>
+                        <div class="activity-timeline" id="dash-activity-log">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- ========================================== -->
+                <!-- PAGE 2: AI ASSISTANT (5-AGENT WORKFLOW)    -->
+                <!-- ========================================== -->
+                <div id="page-assistant" class="page-panel">
+                    
+                    <!-- Persistent Agent Orchestration Progress Stepper -->
+                    <div class="workflow-stepper-card">
+                        <div class="stepper-title-row">
+                            <span class="badge-pill"><i class="fa-solid fa-robot"></i> Sahayak Orchestration Pipeline</span>
+                            <span class="agent-live-tag" id="workflow-current-agent-tag">Agent 1: Scheme Discovery Active</span>
+                        </div>
+                        <div class="stepper-wrapper">
+                            <div class="step-item active" data-step="1">
+                                <div class="step-circle">1</div>
+                                <div class="step-label">Describe Need</div>
+                            </div>
+                            <div class="step-line"></div>
+                            <div class="step-item" data-step="2">
+                                <div class="step-circle">2</div>
+                                <div class="step-label">Scheme Discovery</div>
+                            </div>
+                            <div class="step-line"></div>
+                            <div class="step-item" data-step="3">
+                                <div class="step-circle">3</div>
+                                <div class="step-label">Eligibility Audit</div>
+                            </div>
+                            <div class="step-line"></div>
+                            <div class="step-item" data-step="4">
+                                <div class="step-circle">4</div>
+                                <div class="step-label">Documents</div>
+                            </div>
+                            <div class="step-line"></div>
+                            <div class="step-item" data-step="5">
+                                <div class="step-circle">5</div>
+                                <div class="step-label">Application Draft</div>
+                            </div>
+                            <div class="step-line"></div>
+                            <div class="step-item" data-step="6">
+                                <div class="step-circle">6</div>
+                                <div class="step-label">Live Tracking</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ========================================== -->
+                    <!-- STAGE 1: Central Need Intake (Agent 1)      -->
+                    <!-- ========================================== -->
+                    <div id="workflow-stage-1" class="workflow-stage-content active">
+                        <div class="central-prompt-card">
+                            <div class="central-prompt-header">
+                                <h2>What benefit or support are you looking for today?</h2>
+                                <p>Describe your family situation, financial need, trade, or requirements in your own words. Our Scheme Discovery Agent parses your criteria and searches 89+ verified government welfare initiatives.</p>
+                            </div>
+
+                            <!-- Citizen Context Chip -->
+                            <div class="citizen-intake-badge" id="assistant-citizen-chip">
+                                <!-- Filled by JS -->
+                            </div>
+
+                            <!-- Need Input Textarea -->
+                            <div class="central-input-container">
+                                <label for="assistant-need-input">Describe your requirement in detail (Hindi or English):</label>
+                                <textarea id="assistant-need-input" rows="4" placeholder="e.g. I am a small farmer in Rajasthan with 1.4 hectares of agricultural land. I need seasonal financial assistance to purchase seeds, fertilizers and support my family."></textarea>
+                            </div>
+
+                            <!-- 4 Suggested Prompt Buttons -->
+                            <div class="suggested-queries-box">
+                                <span class="suggested-label"><i class="fa-regular fa-lightbulb"></i> Or click a suggested citizen query to run the pipeline:</span>
+                                <div class="suggested-queries-grid">
+                                    <button class="query-card-btn" onclick="fillAssistantPrompt('I need financial help for my daughter\'s education.')">
+                                        <i class="fa-solid fa-graduation-cap"></i>
+                                        <span>I need financial help for my daughter's education.</span>
+                                    </button>
+                                    <button class="query-card-btn" onclick="fillAssistantPrompt('I am a farmer and need government support.')">
+                                        <i class="fa-solid fa-wheat-awn"></i>
+                                        <span>I am a farmer and need government support.</span>
+                                    </button>
+                                    <button class="query-card-btn" onclick="fillAssistantPrompt('I need healthcare assistance.')">
+                                        <i class="fa-solid fa-heart-pulse"></i>
+                                        <span>I need healthcare assistance.</span>
+                                    </button>
+                                    <button class="query-card-btn" onclick="fillAssistantPrompt('I want to find housing support.')">
+                                        <i class="fa-solid fa-house-chimney"></i>
+                                        <span>I want to find housing support.</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="stage-action-bar right-align">
+                                <button class="btn btn-primary btn-lg" id="btn-run-discovery" onclick="executeSchemeDiscovery()">
+                                    <span>Discover Relevant Schemes</span>
+                                    <i class="fa-solid fa-arrow-right"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ========================================== -->
+                    <!-- STAGE 2: Scheme Discovery Results (Agent 1) -->
+                    <!-- ========================================== -->
+                    <div id="workflow-stage-2" class="workflow-stage-content">
+                        
+                        <!-- Agent Progress Indicator Card -->
+                        <div class="agent-event-box" id="discovery-event-box">
+                            <div class="event-spinner"><i class="fa-solid fa-circle-notch fa-spin"></i></div>
+                            <div class="event-details">
+                                <strong id="discovery-event-title">Searching the Scheme Database...</strong>
+                                <span id="discovery-event-sub">Qdrant dense vector search & criteria extraction active.</span>
+                            </div>
+                        </div>
+
+                        <!-- Extracted Criteria Card -->
+                        <div class="extracted-criteria-card" id="extracted-criteria-container">
+                            <!-- Populated by JS -->
+                        </div>
+
+                        <!-- Results Header -->
+                        <div class="results-header-bar">
+                            <div>
+                                <h3>Matched Welfare Schemes (<span id="results-count">0</span> Schemes Found)</h3>
+                                <p>Ranked by relevance, demographic alignment, and geographic applicability. Top 2–3 marked as Recommended.</p>
+                            </div>
+                            <button class="btn btn-secondary btn-sm" onclick="goToWorkflowStage(1)">
+                                <i class="fa-solid fa-arrow-left"></i> Change Need Description
+                            </button>
+                        </div>
+
+                        <!-- 6 to 7 Matched Scheme Cards Grid -->
+                        <div class="matched-schemes-grid" id="matched-schemes-container">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+
+                    <!-- ========================================== -->
+                    <!-- STAGE 3: Statutory Eligibility Audit (Agent 2)-->
+                    <!-- ========================================== -->
+                    <div id="workflow-stage-3" class="workflow-stage-content">
+                        <div class="stage-card">
+                            <div class="stage-card-header">
+                                <div class="agent-badge"><i class="fa-solid fa-scale-balanced"></i> Agent 2: Statutory Eligibility Assessor</div>
+                                <h2 id="eligibility-scheme-name">Auditing Eligibility Criteria</h2>
+                                <p>Cross-checking statutory rules (age, income ceiling, occupation, land ownership) with your citizen profile.</p>
+                            </div>
+
+                            <!-- Verdict Banner -->
+                            <div class="verdict-banner" id="eligibility-verdict-banner">
+                                <!-- Populated by JS -->
+                            </div>
+
+                            <!-- Statutory Rules Checklist -->
+                            <div class="audit-section">
+                                <h3><i class="fa-solid fa-list-check"></i> Statutory Criteria Evaluation</h3>
+                                <div class="rules-table-container" id="statutory-rules-container">
+                                    <!-- Populated by JS -->
+                                </div>
+                            </div>
+
+                            <!-- Citizen Affirmations / Self-Declarations -->
+                            <div class="audit-section mt-4">
+                                <h3><i class="fa-solid fa-pen-fancy"></i> Citizen Self-Declarations & Confirmations</h3>
+                                <p class="section-hint">Please confirm the following statutory conditions that apply to you before proceeding:</p>
+                                <div class="declarations-list" id="declarations-checklist-container">
+                                    <!-- Populated by JS -->
+                                </div>
+                            </div>
+
+                            <div class="stage-action-bar">
+                                <button class="btn btn-secondary" onclick="goToWorkflowStage(2)">
+                                    <i class="fa-solid fa-arrow-left"></i> Back to Matches
+                                </button>
+                                <button class="btn btn-primary" id="btn-confirm-eligibility" onclick="proceedToDocumentChecklist()">
+                                    <span>Proceed to Document Checklist</span>
+                                    <i class="fa-solid fa-arrow-right"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ========================================== -->
+                    <!-- STAGE 4: Document Readiness (Agent 3)       -->
+                    <!-- ========================================== -->
+                    <div id="workflow-stage-4" class="workflow-stage-content">
+                        <div class="stage-card">
+                            <div class="stage-card-header">
+                                <div class="agent-badge"><i class="fa-solid fa-file-shield"></i> Agent 3: Document Readiness Agent</div>
+                                <h2>Required Statutory Documents & Readiness</h2>
+                                <p>Inspecting your demo document locker. You can upload files or generate verified mock documents instantly for this test.</p>
+                            </div>
+
+                            <!-- Readiness Meter Box -->
+                            <div class="readiness-meter-box" id="docs-readiness-meter">
+                                <!-- Populated by JS -->
+                            </div>
+
+                            <!-- Document Checklist Grid -->
+                            <div class="docs-checklist-grid" id="docs-checklist-container">
+                                <!-- Populated by JS -->
+                            </div>
+
+                            <!-- 1-Click Mock Document Generator for Testing -->
+                            <div class="demo-doc-generator-box">
+                                <h4><i class="fa-solid fa-magic"></i> Need a demo document for this test?</h4>
+                                <p>Click to generate pre-verified mock proofs (Masked Aadhaar, Land Record, Bank Passbook, etc.):</p>
+                                <div class="generator-btn-group">
+                                    <button class="btn btn-outline btn-sm" onclick="quickGenerateDoc('aadhaar')"><i class="fa-solid fa-id-badge"></i> Demo Aadhaar</button>
+                                    <button class="btn btn-outline btn-sm" onclick="quickGenerateDoc('bank_passbook')"><i class="fa-solid fa-money-check"></i> Bank Passbook</button>
+                                    <button class="btn btn-outline btn-sm" onclick="quickGenerateDoc('land_record')"><i class="fa-solid fa-mountain-sun"></i> Land Record</button>
+                                    <button class="btn btn-outline btn-sm" onclick="quickGenerateDoc('vending_certificate')"><i class="fa-solid fa-stamp"></i> Vending Cert</button>
+                                    <button class="btn btn-outline btn-sm" onclick="quickGenerateDoc('income_certificate')"><i class="fa-solid fa-receipt"></i> Income Cert</button>
+                                </div>
+                            </div>
+
+                            <div class="stage-action-bar">
+                                <button class="btn btn-secondary" onclick="goToWorkflowStage(3)">
+                                    <i class="fa-solid fa-arrow-left"></i> Back to Eligibility
+                                </button>
+                                <button class="btn btn-primary" id="btn-proceed-to-draft" onclick="proceedToApplicationDraft()">
+                                    <span>Prepare Official Application Draft</span>
+                                    <i class="fa-solid fa-arrow-right"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ========================================== -->
+                    <!-- STAGE 5: Application Drafter (Agent 4)      -->
+                    <!-- ========================================== -->
+                    <div id="workflow-stage-5" class="workflow-stage-content">
+                        <div class="stage-card">
+                            <div class="stage-card-header">
+                                <div class="agent-badge"><i class="fa-solid fa-file-signature"></i> Agent 4: Application Drafter Agent</div>
+                                <h2>Structured Application Draft & Citizen Review</h2>
+                                <p>Synthesized application package. You can inspect and edit every field before giving your authorization.</p>
+                            </div>
+
+                            <!-- Editable Structured Draft Form -->
+                            <div class="draft-form-container" id="draft-form-box">
+                                <!-- Populated by JS -->
+                            </div>
+
+                            <!-- Mandatory Explicit Citizen Consent Checkbox -->
+                            <div class="explicit-consent-card">
+                                <div class="consent-icon"><i class="fa-solid fa-shield-halved"></i></div>
+                                <div class="consent-text">
+                                    <h4>Mandatory Citizen Consent & Approval</h4>
+                                    <p>Sahayak never submits any simulated application without your explicit, conscious authorization.</p>
+                                    <label class="checkbox-container">
+                                        <input type="checkbox" id="chk-workflow-consent" onchange="handleConsentToggle(this)">
+                                        <span class="checkmark"></span>
+                                        <span class="label-text">
+                                            <strong>I have reviewed this simulated application draft and approve submission.</strong>
+                                            I understand this application is executed in demonstration mode with dummy credentials.
+                                        </span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="stage-action-bar">
+                                <button class="btn btn-secondary" onclick="goToWorkflowStage(4)">
+                                    <i class="fa-solid fa-arrow-left"></i> Back to Documents
+                                </button>
+                                <button class="btn btn-success btn-lg" id="btn-submit-workflow-app" disabled onclick="executeSimulatedSubmission()">
+                                    <i class="fa-solid fa-paper-plane"></i>
+                                    <span>Authorize & Submit (Demo Mode)</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ========================================== -->
+                    <!-- STAGE 6: Tracking & Next Actions (Agent 5)  -->
+                    <!-- ========================================== -->
+                    <div id="workflow-stage-6" class="workflow-stage-content">
+                        <div class="stage-card text-center">
+                            <div class="success-icon-badge">
+                                <i class="fa-solid fa-circle-check"></i>
+                            </div>
+                            <h2>Application Successfully Submitted in Demo Mode!</h2>
+                            <p class="stage-subtitle">Registered in the simulated state welfare registry. Track scrutiny milestones below.</p>
+
+                            <!-- Reference Number Card -->
+                            <div class="submission-ref-box" id="workflow-ref-box">
+                                <!-- Populated by JS -->
+                            </div>
+
+                            <!-- Milestone Timeline -->
+                            <div class="timeline-container">
+                                <h3><i class="fa-solid fa-timeline"></i> Application Milestone Timeline</h3>
+                                <div class="timeline-steps" id="workflow-timeline-box">
+                                    <!-- Populated by JS -->
+                                </div>
+                            </div>
+
+                            <div class="stage-action-bar center-align mt-4">
+                                <button class="btn btn-outline" onclick="window.print()">
+                                    <i class="fa-solid fa-print"></i> Print Acknowledgment Slip
+                                </button>
+                                <button class="btn btn-secondary" onclick="navigateToPage('applications')">
+                                    <i class="fa-solid fa-list-check"></i> View in Applications
+                                </button>
+                                <button class="btn btn-primary" onclick="resetWorkflowToStart()">
+                                    <i class="fa-solid fa-rotate-right"></i> Explore Another Scheme
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- ========================================== -->
+                <!-- PAGE 3: SCHEMES (DEDICATED CATALOG)        -->
+                <!-- ========================================== -->
+                <div id="page-schemes" class="page-panel">
+                    <div class="panel-header-row">
+                        <div>
+                            <h2><i class="fa-solid fa-compass"></i> National & State Welfare Scheme Directory</h2>
+                            <p>Explore 89 verified central and state welfare initiatives with statutory rules and official government portal links.</p>
+                        </div>
+                        <div class="count-badge" id="catalog-count-badge">89 Schemes</div>
+                    </div>
+
+                    <!-- Search and Filters Bar -->
+                    <div class="schemes-filter-bar">
+                        <div class="search-input-wrap">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                            <input type="text" id="catalog-search-input" placeholder="Search by name, trade, keyword (e.g. Kisan, Awas, Scholar, Mudra)..." oninput="filterCatalogSchemes()">
+                        </div>
+
+                        <div class="filter-dropdown-wrap">
+                            <label><i class="fa-solid fa-layer-group"></i> Category:</label>
+                            <select id="catalog-category-filter" onchange="filterCatalogSchemes()">
+                                <option value="All">All Categories</option>
+                                <option value="Agriculture & Farmers">Agriculture & Farmers</option>
+                                <option value="Education & Scholarships">Education & Scholarships</option>
+                                <option value="Health & Family Welfare">Health & Family Welfare</option>
+                                <option value="Housing & Shelter">Housing & Shelter</option>
+                                <option value="Women & Child Development">Women & Child Development</option>
+                                <option value="Employment & Skill Development">Employment & Skills</option>
+                                <option value="Social Welfare & Empowerment">Social Welfare</option>
+                                <option value="Banking & Financial Services">Banking & Loans</option>
+                            </select>
+                        </div>
+
+                        <div class="filter-dropdown-wrap">
+                            <label><i class="fa-solid fa-flag"></i> Level:</label>
+                            <select id="catalog-level-filter" onchange="filterCatalogSchemes()">
+                                <option value="All">All Levels</option>
+                                <option value="Central">Central Schemes</option>
+                                <option value="State">State Schemes</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Schemes Catalog Grid -->
+                    <div class="schemes-catalog-grid" id="catalog-schemes-grid">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <!-- ========================================== -->
+                <!-- PAGE 4: DOCUMENTS (DEMO LOCKER)            -->
+                <!-- ========================================== -->
+                <div id="page-documents" class="page-panel">
+                    <div class="panel-header-row">
+                        <div>
+                            <h2><i class="fa-solid fa-folder-open"></i> Demo Citizen Document Locker</h2>
+                            <p>Manage simulated dummy identity proofs and certificates used by the Document Readiness Agent for instant OCR verification.</p>
+                        </div>
+                        <button class="btn btn-outline btn-sm" onclick="generateAllDemoDocs()">
+                            <i class="fa-solid fa-magic"></i> Auto-Generate Full Demo Set
+                        </button>
+                    </div>
+
+                    <!-- Document Upload Simulation Box -->
+                    <div class="doc-upload-card">
+                        <h3><i class="fa-solid fa-cloud-arrow-up"></i> Upload Sample Document (Simulation)</h3>
+                        <form id="form-doc-upload" onsubmit="handleDocUpload(event)" class="upload-inline-form">
+                            <div class="form-group">
+                                <label>Document Category:</label>
+                                <select id="upload-doc-category" required>
+                                    <option value="aadhaar">Aadhaar Card (Identity Proof)</option>
+                                    <option value="bank_passbook">Bank Passbook / Statement</option>
+                                    <option value="vending_certificate">Certificate of Vending / Trade Proof</option>
+                                    <option value="land_record">Land Ownership Document (Khatauni / Khasra)</option>
+                                    <option value="income_certificate">Income Certificate</option>
+                                    <option value="caste_certificate">Caste / Category Certificate</option>
+                                </select>
+                            </div>
+                            <div class="form-group file-group">
+                                <label>Select Sample File:</label>
+                                <input type="file" id="upload-file-picker" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fa-solid fa-upload"></i> Upload & Simulate OCR
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- User Documents Grid -->
+                    <div class="user-docs-grid" id="user-docs-container">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <!-- ========================================== -->
+                <!-- PAGE 5: APPLICATIONS (PERSISTED TRACKING)   -->
+                <!-- ========================================== -->
+                <div id="page-applications" class="page-panel">
+                    <div class="panel-header-row">
+                        <div>
+                            <h2><i class="fa-solid fa-file-lines"></i> My Welfare Applications</h2>
+                            <p>Track real-time simulated lifecycle, scrutiny milestones, and disbursement status for all your submissions.</p>
+                        </div>
+                        <button class="btn btn-primary" onclick="navigateToPage('assistant')">
+                            <i class="fa-solid fa-plus"></i> New Application
+                        </button>
+                    </div>
+
+                    <div class="applications-stack" id="applications-full-list">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <!-- ========================================== -->
+                <!-- PAGE 6: NOTIFICATIONS                      -->
+                <!-- ========================================== -->
+                <div id="page-notifications" class="page-panel">
+                    <div class="panel-header-row">
+                        <div>
+                            <h2><i class="fa-solid fa-bell"></i> Citizen Notifications & Actionable Alerts</h2>
+                            <p>Real-time updates regarding application scrutiny, eligibility milestones, and scheme deadlines.</p>
+                        </div>
+                    </div>
+
+                    <div class="notifications-card-list" id="notifications-full-list">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <!-- ========================================== -->
+                <!-- PAGE 7: PROFILE                            -->
+                <!-- ========================================== -->
+                <div id="page-profile" class="page-panel">
+                    <div class="panel-header-row">
+                        <div>
+                            <h2><i class="fa-solid fa-id-card"></i> Citizen Socio-Economic Profile</h2>
+                            <p>This demographic and occupational data is used by the AI Workforce to audit eligibility against scheme criteria.</p>
+                        </div>
+                    </div>
+
+                    <div class="profile-card">
+                        <form id="form-edit-profile" onsubmit="handleProfileSave(event)" class="profile-grid">
+                            <div class="form-group">
+                                <label>Full Name:</label>
+                                <input type="text" id="prof-name" readonly>
+                            </div>
+                            <div class="form-group">
+                                <label>Age (Years):</label>
+                                <input type="number" id="prof-age" min="16" max="100" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Gender:</label>
+                                <select id="prof-gender">
+                                    <option value="Male">Male</option>
+                                    <option value="Female">Female</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Occupation / Trade:</label>
+                                <input type="text" id="prof-occupation" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Annual Family Income (₹):</label>
+                                <input type="number" id="prof-income" min="0" step="10000" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Social Category:</label>
+                                <select id="prof-category">
+                                    <option value="General">General</option>
+                                    <option value="OBC">OBC</option>
+                                    <option value="SC">SC</option>
+                                    <option value="ST">ST</option>
+                                    <option value="EWS">EWS</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Residence Area:</label>
+                                <select id="prof-residence">
+                                    <option value="Urban">Urban</option>
+                                    <option value="Rural">Rural</option>
+                                    <option value="Semi-Urban">Semi-Urban</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Agricultural Land (Hectares):</label>
+                                <input type="number" id="prof-land" min="0" step="0.1" value="0.0">
+                            </div>
+                            <div class="form-group">
+                                <label>State & District:</label>
+                                <input type="text" id="prof-location" readonly>
+                            </div>
+                            <div class="form-group checkbox-cell">
+                                <label class="checkbox-container">
+                                    <input type="checkbox" id="prof-bpl">
+                                    <span class="checkmark"></span>
+                                    <span>Below Poverty Line (BPL) / Antyodaya Cardholder</span>
+                                </label>
+                            </div>
+
+                            <div class="profile-actions-bar">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fa-solid fa-floppy-disk"></i> Save Profile Updates
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- ========================================== -->
+                <!-- PAGE 8: PRIVACY & CONSENT                  -->
+                <!-- ========================================== -->
+                <div id="page-privacy" class="page-panel">
+                    <div class="panel-header-row">
+                        <div>
+                            <h2><i class="fa-solid fa-shield-halved"></i> Privacy, Safety & Citizen Consent</h2>
+                            <p>How Sahayak protects citizen rights, handles mock data, and enforces human-in-the-loop validation.</p>
+                        </div>
+                    </div>
+
+                    <div class="privacy-content-grid">
+                        <div class="privacy-card">
+                            <i class="fa-solid fa-user-shield"></i>
+                            <h3>Human-in-the-Loop Consent</h3>
+                            <p>Every draft application produced by Agent 4 requires explicit citizen authorization before simulation. No agent can submit any application unilaterally.</p>
+                        </div>
+
+                        <div class="privacy-card">
+                            <i class="fa-solid fa-file-excel"></i>
+                            <h3>No Sensitive Identity Uploads</h3>
+                            <p>Do not upload real Aadhaar cards or sensitive banking credentials. Sahayak provides pre-verified synthetic demo credentials for hackathon evaluation.</p>
+                        </div>
+
+                        <div class="privacy-card">
+                            <i class="fa-solid fa-server"></i>
+                            <h3>Simulated Registry Isolation</h3>
+                            <p>Application IDs (e.g. <code>SHK-2025-XXXXX</code>) and scrutiny timelines run in an isolated SQLite demo registry. No live government portal APIs are invoked.</p>
+                        </div>
+
+                        <div class="privacy-card">
+                            <i class="fa-solid fa-scale-balanced"></i>
+                            <h3>Verified Statutory Rules</h3>
+                            <p>All scheme rules, benefit sums, and eligibility criteria are sourced directly from official portals (myScheme, India.gov.in) and audited with deterministic checks.</p>
+                        </div>
+                    </div>
+                </div>
+
+            </main>
+        </div>
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- MODAL: SCHEME DETAILS (POPUP)                                  -->
+    <!-- Opens when citizen clicks "View Details" on any scheme card    -->
+    <!-- ============================================================== -->
+    <div class="modal-overlay" id="scheme-details-modal" style="display: none;">
+        <div class="scheme-modal-card">
+            <div class="scheme-modal-header">
+                <div>
+                    <span class="scheme-level-badge" id="modal-scheme-level">Central Scheme • All India</span>
+                    <h3 id="modal-scheme-name">Scheme Title</h3>
+                    <span class="scheme-ministry" id="modal-scheme-ministry">Ministry Details</span>
+                </div>
+                <button class="modal-close-btn" onclick="closeSchemeDetailsModal()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <div class="scheme-modal-body">
+                <div class="detail-section">
+                    <h4><i class="fa-solid fa-gift"></i> Key Benefits</h4>
+                    <p id="modal-scheme-benefits"></p>
+                </div>
+
+                <div class="detail-section">
+                    <h4><i class="fa-solid fa-circle-info"></i> Description</h4>
+                    <p id="modal-scheme-description"></p>
+                </div>
+
+                <div class="detail-section">
+                    <h4><i class="fa-solid fa-list-check"></i> Statutory Eligibility Rules</h4>
+                    <ul id="modal-scheme-eligibility"></ul>
+                </div>
+
+                <div class="detail-section">
+                    <h4><i class="fa-solid fa-folder-tree"></i> Required Documents</h4>
+                    <div class="tags-row" id="modal-scheme-documents"></div>
+                </div>
+
+                <div class="detail-section">
+                    <h4><i class="fa-solid fa-arrow-up-right-from-square"></i> Official Portal Source</h4>
+                    <a href="#" id="modal-scheme-url" target="_blank" rel="noopener noreferrer" class="official-source-link">
+                        <span>Visit Official Portal</span> <i class="fa-solid fa-external-link"></i>
+                    </a>
+                </div>
+            </div>
+
+            <div class="scheme-modal-footer">
+                <button class="btn btn-secondary" onclick="closeSchemeDetailsModal()">Close</button>
+                <button class="btn btn-primary" id="btn-modal-apply-workflow" onclick="startWorkflowWithSchemeFromModal()">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    <span>Check Eligibility & Apply</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- SLIDE-OVER DRAWER: ASK SAHAYAK MITRA (SECONDARY SEARCH CHATBOT)-->
+    <!-- ============================================================== -->
+    <aside class="chatbot-drawer" id="chatbot-sidebar" aria-label="Sahayak Mitra Assistant">
+        <div class="drawer-header">
+            <div class="drawer-bot-info">
+                <div class="drawer-avatar"><i class="fa-solid fa-robot"></i></div>
+                <div>
+                    <h4>Sahayak Mitra</h4>
+                    <span class="drawer-status"><i class="fa-solid fa-circle"></i> AI Welfare Advisor</span>
+                </div>
+            </div>
+            <button class="drawer-close-btn" onclick="toggleChatbot(false)"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <div class="drawer-messages" id="chat-messages">
+            <div class="chat-bubble bot-message">
+                <div class="msg-author"><i class="fa-solid fa-robot"></i> Sahayak Mitra</div>
+                <div class="msg-content">
+                    Namaste! 🙏 I am <strong>Sahayak Mitra</strong>, your secondary query assistant.
+                    <br><br>
+                    You can ask me quick questions about scheme rules, subsidy percentages, or required documents.
+                </div>
+            </div>
+        </div>
+
+        <div class="drawer-suggestions">
+            <button class="drawer-chip" onclick="sendChatPrompt('What is the eligibility for PM SVANidhi working capital loan?')">PM SVANidhi Loan</button>
+            <button class="drawer-chip" onclick="sendChatPrompt('What documents are required for PM-KISAN ₹6000?')">PM-KISAN Documents</button>
+            <button class="drawer-chip" onclick="sendChatPrompt('Who can get up to ₹2.67 Lakh under PMAY Housing?')">PMAY Housing Subsidy</button>
+        </div>
+
+        <form class="drawer-input-form" id="chat-form" onsubmit="handleSendChatMessage(event)">
+            <input type="text" id="chat-input-field" placeholder="Ask about any scheme or rule..." required autocomplete="off">
+            <button type="submit" class="drawer-send-btn" aria-label="Send"><i class="fa-solid fa-paper-plane"></i></button>
+        </form>
+    </aside>
+
+    <!-- Floating Chat Trigger Bubble -->
+    <button class="floating-chat-bubble" id="btn-floating-chat" onclick="toggleChatbot(true)" title="Ask Sahayak Mitra">
+        <i class="fa-solid fa-comment-dots"></i>
+        <span>Ask Mitra</span>
+    </button>
+
+    <!-- Notifications Modal Overlay -->
+    <div class="modal-overlay" id="notifications-modal" style="display: none;">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3><i class="fa-regular fa-bell"></i> Citizen Notifications</h3>
+                <button class="modal-close-btn" onclick="toggleNotificationsModal(false)"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="notifications-list" id="modal-notifications-container">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
