@@ -1,6 +1,6 @@
 """
-JanSetu Demo Documents Routes
-Handles mock document uploads and automatic sample document generation.
+JanSetu Documents Routes
+Handles document uploads (real file storage), demo auto-generation, viewing, and deletion.
 """
 
 import os
@@ -21,7 +21,9 @@ from backend.db import (
 )
 from backend.config import UPLOADS_DIR, PROJECT_ROOT
 
-router = APIRouter(prefix="/api/documents", tags=["Demo Documents"])
+router = APIRouter(prefix="/api/documents", tags=["Documents"])
+
+ALLOWED_EXTENSIONS = {".pdf", ".jpg", ".jpeg", ".png"}
 
 ALLOWED_EXTENSIONS = {".pdf", ".jpg", ".jpeg", ".png"}
 MAX_FILE_SIZE_BYTES = 15 * 1024 * 1024  # 15 MB
@@ -338,7 +340,8 @@ def generate_sample_document(req: GenerateDemoDocRequest):
         user_id=req.user_id,
         doc_type=doc_type,
         doc_name=template["name"],
-        ocr_data=template["ocr"]
+        ocr_data=template["ocr"],
+        status="VERIFIED_DEMO"
     )
 
     return {

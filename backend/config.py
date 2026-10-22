@@ -10,6 +10,9 @@ from dotenv import load_dotenv
 # Base paths
 BACKEND_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = BACKEND_DIR.parent
+
+# Export PROJECT_ROOT so other modules can resolve paths relative to project root
+__all__ = ["PROJECT_ROOT", "BACKEND_DIR"]
 ENV_PATH = BACKEND_DIR / ".env"
 
 # Load environment variables from backend/.env if it exists

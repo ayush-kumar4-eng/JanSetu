@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sahayak (सहायक) — Agentic AI Workforce for Government Scheme Navigation</title>
+    <title>JanSetu (जनसेतु) — Agentic AI Workforce for Government Scheme Navigation</title>
     <meta name="description" content="AI-Driven Citizen Empowerment for Last-Mile Indian Welfare Scheme Discovery, Statutory Eligibility Audit, and Application Preparation.">
     
     <!-- Google Fonts -->
@@ -31,20 +31,30 @@
                         <i class="fa-solid fa-landmark-flag"></i>
                     </div>
                     <div class="brand-title-wrap">
-                        <span class="hindi-brand">सहायक</span>
-                        <span class="eng-brand">Sahayak</span>
+                        <span class="hindi-brand">जनसेतु</span>
+                        <span class="eng-brand">JanSetu</span>
                     </div>
                 </div>
 
                 <nav class="public-nav-links">
-                    <a href="#section-workforce" class="nav-link">The Workforce</a>
-                    <a href="#section-control" class="nav-link">Citizen Control</a>
-                    <a href="#section-schemes" class="nav-link">Schemes</a>
+                    <a href="#section-workforce" class="nav-link" data-i18n="nav_workforce">The Workforce</a>
+                    <a href="#section-control" class="nav-link" data-i18n="nav_control">Citizen Control</a>
+                    <a href="#section-schemes" class="nav-link" data-i18n="nav_schemes">Schemes</a>
+                    <div class="lang-selector-box public-lang-box">
+                        <i class="fa-solid fa-globe"></i>
+                        <select id="landing-lang-select" onchange="changeLanguage(this.value)">
+                            <option value="en">English</option>
+                            <option value="hi">हिंदी (Hindi)</option>
+                            <option value="mr">मराठी (Marathi)</option>
+                            <option value="bn">বাংলা (Bengali)</option>
+                            <option value="ta">தமிழ் (Tamil)</option>
+                        </select>
+                    </div>
                     <button class="btn btn-outline btn-sm" id="btn-open-login" onclick="openAuthModal('demo')">
-                        <i class="fa-solid fa-arrow-right-to-bracket"></i> Sign in
+                        <i class="fa-solid fa-arrow-right-to-bracket"></i> <span data-i18n="nav_signin">Sign in</span>
                     </button>
                     <button class="btn btn-primary btn-sm" onclick="openAuthModal('demo')">
-                        <span>Demo Access</span>
+                        <span data-i18n="nav_demo_access">Demo Access</span>
                     </button>
                 </nav>
             </div>
@@ -55,22 +65,23 @@
             <div class="hero-container">
                 <div class="hero-content">
                     <div class="hero-badge">
-                        <i class="fa-solid fa-shield-halved"></i> Agentic AI Workforce for Citizen Welfare
+                        <i class="fa-solid fa-shield-halved"></i> <span data-i18n="hero_badge">Agentic AI Workforce for Citizen Welfare</span>
                     </div>
-                    <h1 class="hero-title">From eligibility to action.</h1>
-                    <p class="hero-subtitle">
-                        Sahayak coordinates specialized AI agents to help citizens discover government schemes, audit statutory eligibility, organize verified document checklists, draft official applications, and simulate real-time tracking — with explicit consent at every step.
+                    <h1 class="hero-title" data-i18n="hero_title">From eligibility to action.</h1>
+                    <p class="hero-subtitle" data-i18n="hero_subtitle">
+                        JanSetu deploys 5 specialized AI agents to discover, audit statutory eligibility, verify documents, and generate ready-to-submit applications for government welfare schemes.
                     </p>
                     <div class="hero-cta-group">
                         <button class="btn btn-primary btn-lg" onclick="handleStartWithNeed()">
-                            <span>Start with your need</span>
+                            <span data-i18n="hero_cta_audit">Start Benefit Audit</span>
                             <i class="fa-solid fa-arrow-right"></i>
                         </button>
                         <button class="btn btn-secondary btn-lg" onclick="startQuickInteractiveDemo()">
                             <i class="fa-solid fa-play"></i>
-                            <span>Run interactive demo</span>
+                            <span data-i18n="hero_cta_explore">Explore Schemes</span>
                         </button>
                     </div>
+
                     <div class="hero-stat-row">
                         <div class="stat-pill">
                             <i class="fa-solid fa-database"></i> <strong>89 Verified Schemes</strong>
@@ -141,41 +152,41 @@
         <section id="section-workforce" class="public-section">
             <div class="section-container">
                 <div class="section-title-wrap">
-                    <span class="sub-badge">Specialized Agents</span>
-                    <h2>Meet the Sahayak AI Workforce</h2>
-                    <p>Unlike generic conversational chatbots that generate long text essays, Sahayak deploys task-oriented autonomous agents designed for structured public welfare execution.</p>
+                    <span class="sub-badge" data-i18n="workforce_tag">Specialized Agents</span>
+                    <h2 data-i18n="workforce_title">5 Specialized Agents Working for You</h2>
+                    <p data-i18n="workforce_subtitle">Each agent handles a critical step in the government scheme lifecycle.</p>
                 </div>
 
                 <div class="agents-grid">
                     <div class="agent-card">
                         <div class="agent-avatar"><i class="fa-solid fa-compass"></i></div>
                         <span class="agent-tag">Agent 1</span>
-                        <h3>Scheme Discovery Agent</h3>
-                        <p>Translates colloquial citizen needs into structured search vectors, queries Qdrant dense index, ranks 6–7 schemes, and flags top recommendations.</p>
+                        <h3 data-i18n="agent1_name">Need Intake Agent</h3>
+                        <p data-i18n="agent1_desc">Listens to citizen situations in natural language and extracts socio-economic parameters.</p>
                     </div>
                     <div class="agent-card">
                         <div class="agent-avatar"><i class="fa-solid fa-scale-balanced"></i></div>
                         <span class="agent-tag">Agent 2</span>
-                        <h3>Eligibility Assessor Agent</h3>
-                        <p>Loads statutory scheme criteria from SQLite, compares against citizen demographic attributes, and flags verified criteria, exclusions, and items needing confirmation.</p>
+                        <h3 data-i18n="agent2_name">Scheme Matcher</h3>
+                        <p data-i18n="agent2_desc">Performs vector semantic retrieval across thousands of central and state welfare guidelines.</p>
                     </div>
                     <div class="agent-card">
                         <div class="agent-avatar"><i class="fa-solid fa-file-circle-check"></i></div>
                         <span class="agent-tag">Agent 3</span>
-                        <h3>Document Readiness Agent</h3>
-                        <p>Audits required statutory documents against the citizen's demo locker, identifies missing files, and offers simulated OCR verification.</p>
+                        <h3 data-i18n="agent3_name">Eligibility Assessor</h3>
+                        <p data-i18n="agent3_desc">Audits every statutory criteria rule with deterministic boolean proof.</p>
                     </div>
                     <div class="agent-card">
                         <div class="agent-avatar"><i class="fa-solid fa-pen-nib"></i></div>
                         <span class="agent-tag">Agent 4</span>
-                        <h3>Application Drafter Agent</h3>
-                        <p>Synthesizes verified profile data into a reviewable, editable formal application package. Enforces mandatory citizen consent before simulation.</p>
+                        <h3 data-i18n="agent4_name">Document Readiness</h3>
+                        <p data-i18n="agent4_desc">Verifies citizen locker documents against mandatory portal requirements.</p>
                     </div>
                     <div class="agent-card">
                         <div class="agent-avatar"><i class="fa-solid fa-chart-line"></i></div>
                         <span class="agent-tag">Agent 5</span>
-                        <h3>Lifecycle Tracker Agent</h3>
-                        <p>Generates simulated reference numbers, logs scrutiny events, updates dashboard metrics, and advises the citizen on their next best action.</p>
+                        <h3 data-i18n="agent5_name">Application Drafter</h3>
+                        <p data-i18n="agent5_desc">Compiles verified fields into statutory forms awaiting explicit citizen approval.</p>
                     </div>
                 </div>
             </div>
@@ -185,10 +196,11 @@
         <section id="section-control" class="public-section bg-alt">
             <div class="section-container">
                 <div class="section-title-wrap">
-                    <span class="sub-badge">Ethical & Safe AI</span>
-                    <h2>Citizen Control & Safety Principles</h2>
-                    <p>Designed for trust, transparency, and safety in last-mile government navigation.</p>
+                    <span class="sub-badge" data-i18n="control_tag">Safety & Sovereignty</span>
+                    <h2 data-i18n="control_title">Citizen Control Architecture</h2>
+                    <p data-i18n="footer_desc">Empowering every Indian citizen to access their constitutional and statutory welfare rights.</p>
                 </div>
+
 
                 <div class="control-grid">
                     <div class="control-card">
@@ -209,7 +221,7 @@
                     <div class="control-card">
                         <i class="fa-solid fa-laptop-code"></i>
                         <h4>Safe Simulated Sandboxing</h4>
-                        <p>All submission endpoints execute strictly in simulated sandbox mode. Sahayak never attempts unauthorized live portal submissions.</p>
+                        <p>All submission endpoints execute strictly in simulated sandbox mode. JanSetu never attempts unauthorized live portal submissions.</p>
                     </div>
                 </div>
             </div>
@@ -240,16 +252,16 @@
             <div class="footer-container">
                 <div class="footer-brand">
                     <div class="brand-title-wrap">
-                        <span class="hindi-brand">सहायक</span>
-                        <span class="eng-brand">Sahayak</span>
+                        <span class="hindi-brand">जनसेतु</span>
+                        <span class="eng-brand">JanSetu</span>
                     </div>
                     <p>Agentic AI Workforce for Government Scheme Navigation</p>
                 </div>
                 <div class="footer-disclaimer">
-                    <p><strong>Prototype Disclaimer:</strong> Sahayak complements existing government platforms (myScheme, India.gov.in) and is an independent AI prototype demonstration. <strong>Sahayak is not an official government portal.</strong> All applications, reference IDs, and timeline scrutiny milestones are simulated for demonstration purposes.</p>
+                    <p><strong>Prototype Disclaimer:</strong> JanSetu complements existing government platforms (myScheme, India.gov.in) and is an independent AI prototype demonstration. <strong>JanSetu is not an official government portal.</strong> All applications, reference IDs, and timeline scrutiny milestones are simulated for demonstration purposes.</p>
                 </div>
                 <div class="footer-copy">
-                    &copy; 2025–2026 Sahayak AI Prototype. Powered by Qdrant Dense Vector Search, Groq LLM Inference & SQLite Persistence.
+                    &copy; 2025–2026 JanSetu AI Prototype. Powered by Qdrant Dense Vector Search, Groq LLM Inference & SQLite Persistence.
                 </div>
             </div>
         </footer>
@@ -264,7 +276,7 @@
             <div class="auth-modal-header">
                 <div class="auth-modal-title">
                     <i class="fa-solid fa-shield-halved"></i>
-                    <h3>Sahayak Citizen Access</h3>
+                    <h3>JanSetu Citizen Access</h3>
                 </div>
                 <button class="modal-close-btn" onclick="closeAuthModal()"><i class="fa-solid fa-xmark"></i></button>
             </div>
@@ -272,19 +284,19 @@
             <!-- Auth Mode Tabs -->
             <div class="auth-tabs">
                 <button class="auth-tab-btn active" data-auth-tab="auth-tab-demo" onclick="switchAuthTab('auth-tab-demo')">
-                    <i class="fa-solid fa-bolt"></i> Instant Demo Access
+                    <i class="fa-solid fa-bolt"></i> <span data-i18n="auth_tab_demo">Demo Personas</span>
                 </button>
                 <button class="auth-tab-btn" data-auth-tab="auth-tab-signin" onclick="switchAuthTab('auth-tab-signin')">
-                    <i class="fa-solid fa-arrow-right-to-bracket"></i> Sign In
+                    <i class="fa-solid fa-arrow-right-to-bracket"></i> <span data-i18n="auth_tab_login">Sign In</span>
                 </button>
                 <button class="auth-tab-btn" data-auth-tab="auth-tab-register" onclick="switchAuthTab('auth-tab-register')">
-                    <i class="fa-solid fa-user-plus"></i> Register
+                    <i class="fa-solid fa-user-plus"></i> <span data-i18n="auth_tab_register">Register</span>
                 </button>
             </div>
 
             <!-- Tab 1: Instant Demo Personas -->
             <div id="auth-tab-demo" class="auth-tab-content active">
-                <p class="auth-desc">Select a pre-configured, verified demo citizen persona to immediately experience the 5-agent workflow with realistic demographic attributes:</p>
+                <p class="auth-desc" data-i18n="demo_persona_hint">Select a pre-configured, verified demo citizen persona to immediately experience the 5-agent workflow with realistic demographic attributes:</p>
                 
                 <div class="demo-personas-list">
                     <div class="demo-persona-card" onclick="loginAsDemoPersona('ramesh_farmer')">
@@ -345,56 +357,237 @@
             <div id="auth-tab-signin" class="auth-tab-content">
                 <form id="form-signin" onsubmit="handleSignInSubmit(event)">
                     <div class="form-group">
-                        <label for="signin-identifier">Username or Email Address:</label>
-                        <input type="text" id="signin-identifier" placeholder="e.g. ramesh_farmer or sunita@example.com" required>
+                        <label for="signin-identifier" data-i18n="login_identifier_lbl">Username or Email Address:</label>
+                        <input type="text" id="signin-identifier" placeholder="e.g. ramesh_farmer or sunita@example.com" data-i18n-placeholder="login_identifier_ph" required>
                     </div>
                     <div class="form-group">
-                        <label for="signin-pass">Demo Passcode (any value accepted):</label>
-                        <input type="password" id="signin-pass" placeholder="••••••••" value="demo123">
+                        <label for="signin-pass" data-i18n="login_password_lbl">Password (Optional for Demo):</label>
+                        <input type="password" id="signin-pass" placeholder="••••••••" data-i18n-placeholder="login_password_ph" value="demo123">
                     </div>
                     <button type="submit" class="btn btn-primary btn-block">
-                        <i class="fa-solid fa-arrow-right-to-bracket"></i> Sign In to Dashboard
+                        <i class="fa-solid fa-arrow-right-to-bracket"></i> <span data-i18n="btn_signin_submit">Sign In to Dashboard</span>
                     </button>
                 </form>
             </div>
 
+
             <!-- Tab 3: Citizen Registration -->
             <div id="auth-tab-register" class="auth-tab-content">
-                <form id="form-register" onsubmit="handleRegisterSubmit(event)">
-                    <div class="form-row-2">
-                        <div class="form-group">
-                            <label for="reg-fullname">Full Name:</label>
-                            <input type="text" id="reg-fullname" placeholder="e.g. Anita Meena" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="reg-username">Username:</label>
-                            <input type="text" id="reg-username" placeholder="e.g. anita_artisan" required>
-                        </div>
-                    </div>
-                    <div class="form-row-2">
-                        <div class="form-group">
-                            <label for="reg-email">Email:</label>
-                            <input type="email" id="reg-email" placeholder="anita@example.com" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="reg-phone">Phone Number:</label>
-                            <input type="tel" id="reg-phone" placeholder="9876543210">
+                
+                <!-- Registration Step 1: Form Filling -->
+                <div id="reg-step-form" class="reg-step-container">
+                    <div class="reg-header-info">
+                        <h4><i class="fa-solid fa-user-plus"></i> <span data-i18n="reg_title">Citizen Account & Profile Registration</span></h4>
+                        <p class="auth-desc" data-i18n="reg_subtitle">Provide your accurate details below. This information is used directly by the AI Workforce to audit your statutory eligibility across government welfare schemes.</p>
+                        <div class="reg-legend">
+                            <span class="legend-required" data-i18n="reg_legend_req">* Required fields</span>
+                            <span class="legend-optional" data-i18n="reg_legend_opt">(Optional) Eligibility details</span>
                         </div>
                     </div>
-                    <div class="form-row-2">
-                        <div class="form-group">
-                            <label for="reg-occupation">Occupation:</label>
-                            <input type="text" id="reg-occupation" placeholder="e.g. Weaver / Artisan" required>
+
+                    <!-- Validation / Status Alert -->
+                    <div id="reg-alert-box" class="profile-alert" style="display: none;"></div>
+
+                    <form id="form-register" onsubmit="handleReviewRegistration(event)" novalidate>
+                        
+                        <!-- A. ACCOUNT INFORMATION -->
+                        <div class="reg-section">
+                            <div class="reg-section-title">
+                                <i class="fa-solid fa-shield-halved"></i>
+                                <span data-i18n="reg_sec_account">A. Account Information</span>
+                            </div>
+                            <div class="form-row-2">
+                                <div class="form-group">
+                                    <label for="reg-fullname"><span data-i18n="lbl_full_name">Full Name</span> <span class="req-star">*</span></label>
+                                    <input type="text" id="reg-fullname" placeholder="Enter citizen full legal name" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="reg-username"><span data-i18n="lbl_username">Username</span> <span class="req-star">*</span></label>
+                                    <input type="text" id="reg-username" placeholder="e.g. anita_meena" required>
+                                </div>
+                            </div>
+                            <div class="form-row-2">
+                                <div class="form-group">
+                                    <label for="reg-email"><span data-i18n="lbl_email">Email Address</span> <span class="req-star">*</span></label>
+                                    <input type="email" id="reg-email" placeholder="name@example.com" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="reg-phone"><span data-i18n="lbl_phone">Mobile / Phone Number</span> <span class="opt-tag">(Optional)</span></label>
+                                    <input type="tel" id="reg-phone" placeholder="10-digit mobile number" maxlength="15">
+                                </div>
+                            </div>
+                            <div class="form-row-2">
+                                <div class="form-group">
+                                    <label for="reg-password"><span data-i18n="lbl_password">Password</span> <span class="req-star">*</span></label>
+                                    <input type="password" id="reg-password" placeholder="Create password (min 6 characters)" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="reg-confirm-password"><span data-i18n="lbl_confirm_password">Confirm Password</span> <span class="req-star">*</span></label>
+                                    <input type="password" id="reg-confirm-password" placeholder="Re-enter password" required>
+                                </div>
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label for="reg-income">Annual Family Income (₹):</label>
-                            <input type="number" id="reg-income" value="100000" step="10000" required>
+
+                        <!-- B. PERSONAL INFORMATION -->
+                        <div class="reg-section">
+                            <div class="reg-section-title">
+                                <i class="fa-solid fa-user"></i>
+                                <span data-i18n="reg_sec_personal">B. Personal Information</span>
+                            </div>
+                            <div class="form-row-2">
+                                <div class="form-group">
+                                    <label for="reg-age"><span data-i18n="lbl_age">Age (Years)</span> <span class="req-star">*</span></label>
+                                    <input type="number" id="reg-age" min="1" max="120" placeholder="e.g. 28" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="reg-gender"><span data-i18n="lbl_gender">Gender</span> <span class="req-star">*</span></label>
+                                    <select id="reg-gender" required>
+                                        <option value="" disabled selected data-i18n="opt_select_gender">-- Select Gender --</option>
+                                        <option value="Male" data-i18n="gender_male">Male</option>
+                                        <option value="Female" data-i18n="gender_female">Female</option>
+                                        <option value="Other" data-i18n="gender_other">Other</option>
+                                    </select>
+                                </div>
+
+                            </div>
                         </div>
+
+                        <!-- C. SOCIO-ECONOMIC INFORMATION -->
+                        <div class="reg-section">
+                            <div class="reg-section-title">
+                                <i class="fa-solid fa-coins"></i>
+                                <span data-i18n="reg_sec_socio">C. Socio-Economic Information</span>
+                            </div>
+                            <div class="form-row-2">
+                                <div class="form-group">
+                                    <label for="reg-occupation"><span data-i18n="lbl_occupation">Occupation / Primary Trade</span> <span class="req-star">*</span></label>
+                                    <input type="text" id="reg-occupation" placeholder="e.g. Farmer, Street Vendor, Weaver, Artisan, Student" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="reg-income"><span data-i18n="lbl_annual_income">Annual Family Income (₹)</span> <span class="req-star">*</span></label>
+                                    <input type="number" id="reg-income" min="0" step="5000" placeholder="Enter total yearly household income" required>
+                                </div>
+                            </div>
+                            <div class="form-row-2">
+                                <div class="form-group">
+                                    <label for="reg-category"><span data-i18n="lbl_social_category">Social Category</span> <span class="req-star">*</span></label>
+                                    <select id="reg-category" required>
+                                        <option value="" disabled selected data-i18n="opt_select_category">-- Select Social Category --</option>
+                                        <option value="General" data-i18n="cat_general">General</option>
+                                        <option value="OBC" data-i18n="cat_obc">OBC (Other Backward Class)</option>
+                                        <option value="SC" data-i18n="cat_sc">SC (Scheduled Caste)</option>
+                                        <option value="ST" data-i18n="cat_st">ST (Scheduled Tribe)</option>
+                                        <option value="EWS" data-i18n="cat_ebc">EWS (Economically Weaker Section)</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="reg-bpl"><span data-i18n="lbl_bpl_status">BPL / Antyodaya Ration Status</span> <span class="req-star">*</span></label>
+                                    <select id="reg-bpl" required>
+                                        <option value="" disabled selected data-i18n="opt_select_bpl">-- Select BPL Status --</option>
+                                        <option value="No" data-i18n="bpl_no">No</option>
+                                        <option value="Yes" data-i18n="bpl_yes">Yes (BPL / Antyodaya Cardholder)</option>
+                                        <option value="Not Sure" data-i18n="bpl_not_sure">Not Sure</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- D. RESIDENTIAL INFORMATION -->
+                        <div class="reg-section">
+                            <div class="reg-section-title">
+                                <i class="fa-solid fa-location-dot"></i>
+                                <span data-i18n="reg_sec_residential">D. Residential Information</span>
+                            </div>
+                            <div class="form-row-2">
+                                <div class="form-group">
+                                    <label for="reg-state"><span data-i18n="lbl_state">State of Residence</span> <span class="req-star">*</span></label>
+                                    <input type="text" id="reg-state" placeholder="e.g. Rajasthan" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="reg-district"><span data-i18n="lbl_district">District</span> <span class="req-star">*</span></label>
+                                    <input type="text" id="reg-district" placeholder="e.g. Jaipur" required>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="reg-residence"><span data-i18n="lbl_residence_area">Residence Area Type</span> <span class="req-star">*</span></label>
+                                <select id="reg-residence" required>
+                                    <option value="" disabled selected data-i18n="opt_select_area">-- Select Residence Area --</option>
+                                    <option value="Rural" data-i18n="area_rural">Rural</option>
+                                    <option value="Semi-Urban" data-i18n="area_semi_urban">Semi-Urban</option>
+                                    <option value="Urban" data-i18n="area_urban">Urban</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- E. ADDITIONAL ELIGIBILITY INFORMATION -->
+                        <div class="reg-section">
+                            <div class="reg-section-title">
+                                <i class="fa-solid fa-id-badge"></i>
+                                <span data-i18n="reg_sec_additional">E. Additional Eligibility Details</span>
+                            </div>
+                            <div class="form-row-2">
+                                <div class="form-group">
+                                    <label for="reg-land"><span data-i18n="lbl_landholding">Agricultural Landholding (Hectares)</span> <span class="opt-tag">(Optional)</span></label>
+                                    <input type="number" id="reg-land" min="0" step="0.1" placeholder="e.g. 1.5 (leave 0 if non-agricultural)">
+                                </div>
+                                <div class="form-group">
+                                    <label for="reg-family-count"><span data-i18n="lbl_family_members">Family Members Count</span> <span class="opt-tag">(Optional)</span></label>
+                                    <input type="number" id="reg-family-count" min="1" max="25" placeholder="e.g. 4">
+                                </div>
+                            </div>
+                            <div class="form-row-2">
+                                <div class="form-group">
+                                    <label for="reg-marital"><span data-i18n="lbl_marital_status">Marital Status</span> <span class="opt-tag">(Optional)</span></label>
+                                    <select id="reg-marital">
+                                        <option value="" disabled selected data-i18n="opt_select_marital">-- Select Marital Status (Optional) --</option>
+                                        <option value="Single" data-i18n="marital_single">Single / Unmarried</option>
+                                        <option value="Married" data-i18n="marital_married">Married</option>
+                                        <option value="Widowed" data-i18n="marital_widowed">Widowed</option>
+                                        <option value="Divorced" data-i18n="marital_separated">Divorced / Separated</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="reg-pwd"><span data-i18n="lbl_diff_abled">Differently Abled (PwD / Divyangjan)</span> <span class="opt-tag">(Optional)</span></label>
+                                    <select id="reg-pwd">
+                                        <option value="" disabled selected data-i18n="diff_abled_no">-- Select Disability Status (Optional) --</option>
+                                        <option value="0" data-i18n="diff_abled_no">No</option>
+                                        <option value="1" data-i18n="diff_abled_yes">Yes (40%+ Disability Certificate)</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Review Action Button -->
+                        <div class="reg-actions">
+                            <button type="submit" class="btn btn-primary btn-block btn-lg" id="btn-review-register">
+                                <i class="fa-solid fa-list-check"></i> <span data-i18n="btn_next_review">Review Registration Details</span> &rarr;
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Registration Step 2: Review Details Before Submission -->
+                <div id="reg-step-review" class="reg-step-container" style="display: none;">
+                    <div class="reg-header-info">
+                        <h4><i class="fa-solid fa-clipboard-check"></i> <span data-i18n="reg_review_heading">Review Your Registration Details</span></h4>
+                        <p class="auth-desc" data-i18n="reg_review_note">Please verify your information before creating your account. Your statutory eligibility will be assessed based on these parameters.</p>
                     </div>
-                    <button type="submit" class="btn btn-primary btn-block">
-                        <i class="fa-solid fa-user-plus"></i> Create Profile & Enter Portal
-                    </button>
-                </form>
+
+                    <div class="reg-review-card" id="reg-review-summary-content">
+                        <!-- Populated dynamically by JS -->
+                    </div>
+
+                    <div class="reg-review-actions">
+                        <button type="button" class="btn btn-secondary" onclick="backToRegistrationForm()">
+                            <i class="fa-solid fa-arrow-left"></i> <span data-i18n="btn_back_edit">Edit Details</span>
+                        </button>
+                        <button type="button" class="btn btn-primary" id="btn-submit-final-register" onclick="executeFinalRegistration()">
+                            <i class="fa-solid fa-user-check"></i> <span data-i18n="btn_confirm_register">Confirm & Create Account</span>
+                        </button>
+
+                    </div>
+                </div>
+
             </div>
         </div>
     </div>
@@ -411,27 +604,26 @@
                 <div class="portal-brand" onclick="navigateToPage('dashboard')">
                     <div class="brand-icon"><i class="fa-solid fa-landmark-flag"></i></div>
                     <div class="portal-title">
-                        <span class="hindi-brand">सहायक</span>
-                        <span class="eng-brand">Sahayak</span>
+                        <span class="hindi-brand">जनसेतु</span>
+                        <span class="eng-brand">JanSetu</span>
                     </div>
                 </div>
-
-                <!-- Global Scheme Search -->
-                <div class="global-search-box">
-                    <i class="fa-solid fa-magnifying-glass"></i>
-                    <input type="text" id="global-scheme-search" placeholder="Search 89 government schemes by keyword or benefit (Press Enter)..." onkeydown="handleGlobalSearch(event)">
-                </div>
             </div>
+
 
             <div class="topbar-right">
                 <!-- Language Selector -->
                 <div class="lang-selector-box">
                     <i class="fa-solid fa-globe"></i>
-                    <select id="app-lang-select">
+                    <select id="app-lang-select" onchange="changeLanguage(this.value)">
                         <option value="en">English</option>
                         <option value="hi">हिंदी (Hindi)</option>
+                        <option value="mr">मराठी (Marathi)</option>
+                        <option value="bn">বাংলা (Bengali)</option>
+                        <option value="ta">தமிழ் (Tamil)</option>
                     </select>
                 </div>
+
 
                 <!-- Notifications Bell -->
                 <button class="topbar-icon-btn" id="btn-topbar-notify" onclick="toggleNotificationsModal(true)" title="Notifications">
@@ -469,42 +661,42 @@
                 <div class="sidebar-menu">
                     <button class="sidebar-item active" data-page="dashboard" onclick="navigateToPage('dashboard')">
                         <i class="fa-solid fa-gauge-high"></i>
-                        <span>Dashboard</span>
+                        <span data-i18n="nav_dashboard">Dashboard</span>
                     </button>
                     <button class="sidebar-item" data-page="assistant" onclick="navigateToPage('assistant')">
                         <i class="fa-solid fa-wand-magic-sparkles"></i>
-                        <span>AI Assistant</span>
+                        <span data-i18n="nav_mitra">AI Assistant</span>
                     </button>
                     <button class="sidebar-item" data-page="schemes" onclick="navigateToPage('schemes')">
                         <i class="fa-solid fa-compass"></i>
-                        <span>Schemes</span>
+                        <span data-i18n="nav_find_schemes">Schemes</span>
                     </button>
                     <button class="sidebar-item" data-page="documents" onclick="navigateToPage('documents')">
                         <i class="fa-solid fa-folder-open"></i>
-                        <span>Documents</span>
+                        <span data-i18n="nav_documents">Documents</span>
                     </button>
                     <button class="sidebar-item" data-page="applications" onclick="navigateToPage('applications')">
                         <i class="fa-solid fa-file-lines"></i>
-                        <span>Applications</span>
+                        <span data-i18n="nav_my_applications">Applications</span>
                         <span class="sidebar-counter" id="sidebar-app-count">0</span>
                     </button>
                     <button class="sidebar-item" data-page="notifications" onclick="navigateToPage('notifications')">
                         <i class="fa-solid fa-bell"></i>
-                        <span>Notifications</span>
+                        <span data-i18n="notif_modal_title">Notifications</span>
                     </button>
                     <button class="sidebar-item" data-page="profile" onclick="navigateToPage('profile')">
                         <i class="fa-solid fa-id-card"></i>
-                        <span>Profile</span>
+                        <span data-i18n="nav_profile">Profile</span>
                     </button>
                     <button class="sidebar-item" data-page="privacy" onclick="navigateToPage('privacy')">
                         <i class="fa-solid fa-shield-halved"></i>
-                        <span>Privacy & Consent</span>
+                        <span data-i18n="nav_control">Privacy & Consent</span>
                     </button>
                 </div>
 
                 <!-- Sidebar Persona Switcher Box -->
                 <div class="sidebar-persona-card">
-                    <label for="persona-select-sidebar"><i class="fa-solid fa-user-check"></i> Demo Persona:</label>
+                    <label for="persona-select-sidebar"><i class="fa-solid fa-user-check"></i> <span data-i18n="auth_tab_demo">Demo Persona</span>:</label>
                     <select id="persona-select-sidebar" class="persona-select" onchange="switchPersonaFromSidebar(this.value)">
                         <!-- Populated by JS -->
                     </select>
@@ -513,7 +705,7 @@
                 <div class="sidebar-footer">
                     <button class="sidebar-logout-btn" onclick="handleLogout()">
                         <i class="fa-solid fa-arrow-right-from-bracket"></i>
-                        <span>Sign Out</span>
+                        <span data-i18n="nav_logout">Sign Out</span>
                     </button>
                 </div>
             </aside>
@@ -682,7 +874,7 @@
                     <!-- Persistent Agent Orchestration Progress Stepper -->
                     <div class="workflow-stepper-card">
                         <div class="stepper-title-row">
-                            <span class="badge-pill"><i class="fa-solid fa-robot"></i> Sahayak Orchestration Pipeline</span>
+                            <span class="badge-pill"><i class="fa-solid fa-robot"></i> JanSetu Orchestration Pipeline</span>
                             <span class="agent-live-tag" id="workflow-current-agent-tag">Agent 1: Scheme Discovery Active</span>
                         </div>
                         <div class="stepper-wrapper">
@@ -813,7 +1005,7 @@
                     <div id="workflow-stage-3" class="workflow-stage-content">
                         <div class="stage-card">
                             <div class="stage-card-header">
-                                <div class="agent-badge"><i class="fa-solid fa-scale-balanced"></i> Agent 2: Statutory Eligibility Assessor</div>
+                                <div class="agent-badge"><i class="fa-solid fa-scale-balanced"></i> Agent 3: Statutory Eligibility Assessor & Audit</div>
                                 <h2 id="eligibility-scheme-name">Auditing Eligibility Criteria</h2>
                                 <p>Cross-checking statutory rules (age, income ceiling, occupation, land ownership) with your citizen profile.</p>
                             </div>
@@ -825,9 +1017,41 @@
 
                             <!-- Statutory Rules Checklist -->
                             <div class="audit-section">
-                                <h3><i class="fa-solid fa-list-check"></i> Statutory Criteria Evaluation</h3>
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                                    <h3 style="margin: 0;"><i class="fa-solid fa-list-check"></i> Statutory Criteria Evaluation</h3>
+                                    <button type="button" class="btn btn-outline btn-sm" onclick="openUploadDocModal()" style="display: inline-flex; align-items: center; gap: 6px;">
+                                        <i class="fa-solid fa-file-arrow-up"></i>
+                                        <span>Upload Document / Proof</span>
+                                    </button>
+                                </div>
                                 <div class="rules-table-container" id="statutory-rules-container">
                                     <!-- Populated by JS -->
+                                </div>
+                            </div>
+
+                            <!-- Upload Supporting Document for Verification Box -->
+                            <div class="audit-section mt-4" style="background: rgba(30, 58, 138, 0.04); border: 1.5px dashed rgba(30, 58, 138, 0.25); border-radius: 12px; padding: 18px 20px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;">
+                                    <div style="flex: 1; min-width: 260px;">
+                                        <h4 style="margin: 0; font-size: 15px; font-weight: 700; color: var(--color-navy); display: flex; align-items: center; gap: 8px;">
+                                            <i class="fa-solid fa-shield-check" style="color: var(--color-navy);"></i>
+                                            <span>Substantiate or Update Your Eligibility Documents</span>
+                                        </h4>
+                                        <p style="margin: 4px 0 0; font-size: 13px; color: var(--text-muted); line-height: 1.45;">
+                                            Have an income certificate, land records (Khatauni/Khasra), caste proof, or ID? Upload them here to satisfy criteria checks in real-time.
+                                        </p>
+                                    </div>
+                                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                        <button type="button" class="btn btn-outline btn-sm" onclick="openUploadDocModal('income_certificate', 'Income Certificate Proof')">
+                                            <i class="fa-solid fa-receipt"></i> Income Proof
+                                        </button>
+                                        <button type="button" class="btn btn-outline btn-sm" onclick="openUploadDocModal('land_record', 'Land Record / Khatauni')">
+                                            <i class="fa-solid fa-mountain-sun"></i> Land Record
+                                        </button>
+                                        <button type="button" class="btn btn-primary btn-sm" onclick="openUploadDocModal()">
+                                            <i class="fa-solid fa-cloud-arrow-up"></i> Upload Document
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
 
@@ -844,10 +1068,15 @@
                                 <button class="btn btn-secondary" onclick="goToWorkflowStage(2)">
                                     <i class="fa-solid fa-arrow-left"></i> Back to Matches
                                 </button>
-                                <button class="btn btn-primary" id="btn-confirm-eligibility" onclick="proceedToDocumentChecklist()">
-                                    <span>Proceed to Document Checklist</span>
-                                    <i class="fa-solid fa-arrow-right"></i>
-                                </button>
+                                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                    <button class="btn btn-outline" type="button" onclick="openUploadDocModal()">
+                                        <i class="fa-solid fa-upload"></i> Upload Document
+                                    </button>
+                                    <button class="btn btn-primary" id="btn-confirm-eligibility" onclick="proceedToDocumentChecklist()">
+                                        <span>Proceed to Document Checklist</span>
+                                        <i class="fa-solid fa-arrow-right"></i>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -875,14 +1104,17 @@
 
                             <!-- 1-Click Mock Document Generator for Testing -->
                             <div class="demo-doc-generator-box">
-                                <h4><i class="fa-solid fa-magic"></i> Need a demo document for this test?</h4>
-                                <p>Click to generate pre-verified mock proofs (Masked Aadhaar, Land Record, Bank Passbook, etc.):</p>
+                                <h4><i class="fa-solid fa-magic"></i> Add a document for this requirement?</h4>
+                                <p>Generate pre-verified mock proofs instantly, or upload your own file:</p>
                                 <div class="generator-btn-group">
                                     <button class="btn btn-outline btn-sm" onclick="quickGenerateDoc('aadhaar')"><i class="fa-solid fa-id-badge"></i> Demo Aadhaar</button>
                                     <button class="btn btn-outline btn-sm" onclick="quickGenerateDoc('bank_passbook')"><i class="fa-solid fa-money-check"></i> Bank Passbook</button>
                                     <button class="btn btn-outline btn-sm" onclick="quickGenerateDoc('land_record')"><i class="fa-solid fa-mountain-sun"></i> Land Record</button>
                                     <button class="btn btn-outline btn-sm" onclick="quickGenerateDoc('vending_certificate')"><i class="fa-solid fa-stamp"></i> Vending Cert</button>
                                     <button class="btn btn-outline btn-sm" onclick="quickGenerateDoc('income_certificate')"><i class="fa-solid fa-receipt"></i> Income Cert</button>
+                                    <button class="btn btn-primary btn-sm" onclick="openUploadDocModal()">
+                                        <i class="fa-solid fa-upload"></i> Upload Document
+                                    </button>
                                 </div>
                             </div>
 
@@ -919,7 +1151,7 @@
                                 <div class="consent-icon"><i class="fa-solid fa-shield-halved"></i></div>
                                 <div class="consent-text">
                                     <h4>Mandatory Citizen Consent & Approval</h4>
-                                    <p>Sahayak never submits any simulated application without your explicit, conscious authorization.</p>
+                                    <p>JanSetu never submits any simulated application without your explicit, conscious authorization.</p>
                                     <label class="checkbox-container">
                                         <input type="checkbox" id="chk-workflow-consent" onchange="handleConsentToggle(this)">
                                         <span class="checkmark"></span>
@@ -989,8 +1221,8 @@
                 <div id="page-schemes" class="page-panel">
                     <div class="panel-header-row">
                         <div>
-                            <h2><i class="fa-solid fa-compass"></i> National & State Welfare Scheme Directory</h2>
-                            <p>Explore 89 verified central and state welfare initiatives with statutory rules and official government portal links.</p>
+                            <h2><i class="fa-solid fa-compass"></i> <span data-i18n="schemes_title">National & State Welfare Scheme Directory</span></h2>
+                            <p data-i18n="schemes_subtitle">Explore 89 verified central and state welfare initiatives with statutory rules and official government portal links.</p>
                         </div>
                         <div class="count-badge" id="catalog-count-badge">89 Schemes</div>
                     </div>
@@ -999,23 +1231,22 @@
                     <div class="schemes-filter-bar">
                         <div class="search-input-wrap">
                             <i class="fa-solid fa-magnifying-glass"></i>
-                            <input type="text" id="catalog-search-input" placeholder="Search by name, trade, keyword (e.g. Kisan, Awas, Scholar, Mudra)..." oninput="filterCatalogSchemes()">
+                            <input type="text" id="catalog-search-input" placeholder="Search by name, trade, keyword (e.g. Kisan, Awas, Scholar, Mudra)..." data-i18n-placeholder="search_schemes_placeholder" oninput="filterCatalogSchemes()">
                         </div>
 
                         <div class="filter-dropdown-wrap">
-                            <label><i class="fa-solid fa-layer-group"></i> Category:</label>
+                            <label><i class="fa-solid fa-layer-group"></i> <span data-i18n="tbl_doc_type">Category</span>:</label>
                             <select id="catalog-category-filter" onchange="filterCatalogSchemes()">
-                                <option value="All">All Categories</option>
-                                <option value="Agriculture & Farmers">Agriculture & Farmers</option>
-                                <option value="Education & Scholarships">Education & Scholarships</option>
-                                <option value="Health & Family Welfare">Health & Family Welfare</option>
-                                <option value="Housing & Shelter">Housing & Shelter</option>
-                                <option value="Women & Child Development">Women & Child Development</option>
-                                <option value="Employment & Skill Development">Employment & Skills</option>
-                                <option value="Social Welfare & Empowerment">Social Welfare</option>
-                                <option value="Banking & Financial Services">Banking & Loans</option>
+                                <option value="All" data-i18n="filter_all">All Categories</option>
+                                <option value="Agriculture & Farmers" data-i18n="filter_agriculture">Agriculture & Farmers</option>
+                                <option value="Education & Scholarships" data-i18n="filter_education">Education & Scholarships</option>
+                                <option value="Health & Family Welfare" data-i18n="filter_healthcare">Health & Family Welfare</option>
+                                <option value="Housing & Shelter" data-i18n="filter_housing">Housing & Shelter</option>
+                                <option value="Social Welfare & Empowerment" data-i18n="filter_social">Social Welfare</option>
+                                <option value="Banking & Financial Services" data-i18n="filter_business">Banking & Loans</option>
                             </select>
                         </div>
+
 
                         <div class="filter-dropdown-wrap">
                             <label><i class="fa-solid fa-flag"></i> Level:</label>
@@ -1033,8 +1264,8 @@
                     </div>
                 </div>
 
-                <!-- ========================================== -->
-                <!-- PAGE 4: DOCUMENTS (DEMO LOCKER)            -->
+                                <!-- ========================================== -->
+                <!-- PAGE 4: DOCUMENTS                         -->
                 <!-- ========================================== -->
                 <div id="page-documents" class="page-panel">
                     <div class="panel-header-row">
@@ -1089,19 +1320,20 @@
                     </div>
                 </div>
 
-                <!-- ========================================== -->
+<!-- ========================================== -->
                 <!-- PAGE 5: APPLICATIONS (PERSISTED TRACKING)   -->
                 <!-- ========================================== -->
                 <div id="page-applications" class="page-panel">
                     <div class="panel-header-row">
                         <div>
-                            <h2><i class="fa-solid fa-file-lines"></i> My Welfare Applications</h2>
-                            <p>Track real-time simulated lifecycle, scrutiny milestones, and disbursement status for all your submissions.</p>
+                            <h2><i class="fa-solid fa-file-lines"></i> <span data-i18n="apps_page_title">My Welfare Applications</span></h2>
+                            <p data-i18n="apps_page_subtitle">Track real-time simulated lifecycle, scrutiny milestones, and disbursement status for all your submissions.</p>
                         </div>
                         <button class="btn btn-primary" onclick="navigateToPage('assistant')">
-                            <i class="fa-solid fa-plus"></i> New Application
+                            <i class="fa-solid fa-plus"></i> <span data-i18n="btn_start_application">New Application</span>
                         </button>
                     </div>
+
 
                     <div class="applications-stack" id="applications-full-list">
                         <!-- Populated by JS -->
@@ -1127,82 +1359,246 @@
                 <!-- ========================================== -->
                 <!-- PAGE 7: PROFILE                            -->
                 <!-- ========================================== -->
+                <!-- PAGE 7: PROFILE                            -->
+                <!-- ========================================== -->
                 <div id="page-profile" class="page-panel">
-                    <div class="panel-header-row">
+                    <div class="panel-header-row profile-header-bar">
                         <div>
-                            <h2><i class="fa-solid fa-id-card"></i> Citizen Socio-Economic Profile</h2>
-                            <p>This demographic and occupational data is used by the AI Workforce to audit eligibility against scheme criteria.</p>
+                            <h2><i class="fa-solid fa-id-card"></i> <span data-i18n="profile_title">Citizen Socio-Economic Profile</span></h2>
+                            <p data-i18n="profile_subtitle">Saved personal, demographic, occupational, financial, and residential attributes used by the AI Workforce for statutory eligibility auditing.</p>
+                        </div>
+                        <div class="profile-header-actions">
+                            <!-- Read-only badge -->
+                            <span class="profile-mode-badge readonly" id="profile-badge-readonly">
+                                <i class="fa-solid fa-lock"></i> <span data-i18n="profile_readonly_badge">Verified Profile (Read-Only)</span>
+                            </span>
+                            <!-- Edit-mode badge -->
+                            <span class="profile-mode-badge editing" id="profile-badge-editing" style="display: none;">
+                                <i class="fa-solid fa-pen-to-square"></i> <span data-i18n="profile_edit_badge">Editing Mode Active</span>
+                            </span>
+
+                            <!-- Action button: Read-only mode -->
+                            <button type="button" id="btn-edit-profile" class="btn btn-primary" onclick="setProfileEditMode(true)">
+                                <i class="fa-solid fa-pen-to-square"></i> <span data-i18n="btn_edit_profile">Edit Profile</span>
+                            </button>
+
+                            <!-- Action buttons: Edit mode -->
+                            <div id="profile-edit-actions" class="profile-edit-buttons-group" style="display: none;">
+                                <button type="button" id="btn-cancel-profile" class="btn btn-secondary" onclick="cancelProfileEdit()">
+                                    <i class="fa-solid fa-xmark"></i> <span data-i18n="btn_cancel">Cancel</span>
+                                </button>
+                                <button type="submit" form="form-edit-profile" id="btn-save-profile" class="btn btn-primary">
+                                    <i class="fa-solid fa-floppy-disk"></i> <span data-i18n="btn_save_changes">Save Changes</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
 
+                    <!-- Inline Notification / Alert Box -->
+                    <div id="profile-alert-box" class="profile-alert" style="display: none;"></div>
+
+                    <!-- Profile Hero Summary Card -->
+                    <div class="profile-hero-card" id="profile-hero-card">
+                        <div class="profile-hero-avatar" id="prof-hero-avatar">R</div>
+                        <div class="profile-hero-info">
+                            <div class="profile-hero-name-row">
+                                <h3 id="prof-hero-name">Ramesh Kumar</h3>
+                                <span class="profile-verified-chip"><i class="fa-solid fa-circle-check"></i> Verified Citizen Persona</span>
+                                <span class="profile-username-pill" id="prof-hero-username">@ramesh_farmer</span>
+                            </div>
+                            <div class="profile-quick-stats" id="prof-hero-quick-stats">
+                                <span class="stat-pill"><i class="fa-solid fa-briefcase"></i> <strong id="prof-hero-occ">Farmer</strong></span>
+                                <span class="stat-pill"><i class="fa-solid fa-indian-rupee-sign"></i> <strong id="prof-hero-inc">₹1,20,000/yr</strong></span>
+                                <span class="stat-pill"><i class="fa-solid fa-location-dot"></i> <strong id="prof-hero-loc">Jaipur, Rajasthan</strong></span>
+                                <span class="stat-pill"><i class="fa-solid fa-users"></i> <strong id="prof-hero-cat">OBC</strong></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Profile Form (Read-only by default; editable in edit mode) -->
                     <div class="profile-card">
-                        <form id="form-edit-profile" onsubmit="handleProfileSave(event)" class="profile-grid">
-                            <div class="form-group">
-                                <label>Full Name:</label>
-                                <input type="text" id="prof-name" readonly>
-                            </div>
-                            <div class="form-group">
-                                <label>Age (Years):</label>
-                                <input type="number" id="prof-age" min="16" max="100" required>
-                            </div>
-                            <div class="form-group">
-                                <label>Gender:</label>
-                                <select id="prof-gender">
-                                    <option value="Male">Male</option>
-                                    <option value="Female">Female</option>
-                                    <option value="Other">Other</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label>Occupation / Trade:</label>
-                                <input type="text" id="prof-occupation" required>
-                            </div>
-                            <div class="form-group">
-                                <label>Annual Family Income (₹):</label>
-                                <input type="number" id="prof-income" min="0" step="10000" required>
-                            </div>
-                            <div class="form-group">
-                                <label>Social Category:</label>
-                                <select id="prof-category">
-                                    <option value="General">General</option>
-                                    <option value="OBC">OBC</option>
-                                    <option value="SC">SC</option>
-                                    <option value="ST">ST</option>
-                                    <option value="EWS">EWS</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label>Residence Area:</label>
-                                <select id="prof-residence">
-                                    <option value="Urban">Urban</option>
-                                    <option value="Rural">Rural</option>
-                                    <option value="Semi-Urban">Semi-Urban</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label>Agricultural Land (Hectares):</label>
-                                <input type="number" id="prof-land" min="0" step="0.1" value="0.0">
-                            </div>
-                            <div class="form-group">
-                                <label>State & District:</label>
-                                <input type="text" id="prof-location" readonly>
-                            </div>
-                            <div class="form-group checkbox-cell">
-                                <label class="checkbox-container">
-                                    <input type="checkbox" id="prof-bpl">
-                                    <span class="checkmark"></span>
-                                    <span>Below Poverty Line (BPL) / Antyodaya Cardholder</span>
-                                </label>
+                        <form id="form-edit-profile" onsubmit="handleProfileSave(event)" class="profile-form is-readonly">
+
+                            <!-- SECTION 1: PERSONAL DETAILS -->
+                            <div class="profile-section-block">
+                                <div class="profile-section-header">
+                                    <div class="section-icon"><i class="fa-solid fa-user"></i></div>
+                                    <div>
+                                        <h4 data-i18n="profile_sec_personal">Personal Details</h4>
+                                        <p>Primary citizen identification and direct contact information</p>
+                                    </div>
+                                </div>
+                                <div class="profile-grid">
+                                    <div class="form-group">
+                                        <label for="prof-name"><span data-i18n="lbl_full_name">Full Name</span>: <span class="req-star">*</span></label>
+                                        <input type="text" id="prof-name" placeholder="Enter citizen full name" required disabled>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="prof-email" data-i18n="lbl_email">Email Address:</label>
+                                        <input type="email" id="prof-email" placeholder="example@domain.com" disabled>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="prof-phone" data-i18n="lbl_phone">Mobile / Phone Number:</label>
+                                        <input type="tel" id="prof-phone" placeholder="10-digit mobile number" maxlength="15" disabled>
+                                    </div>
+                                </div>
                             </div>
 
-                            <div class="profile-actions-bar">
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="fa-solid fa-floppy-disk"></i> Save Profile Updates
-                                </button>
+                            <!-- SECTION 2: DEMOGRAPHIC DETAILS -->
+                            <div class="profile-section-block">
+                                <div class="profile-section-header">
+                                    <div class="section-icon"><i class="fa-solid fa-id-badge"></i></div>
+                                    <div>
+                                        <h4 data-i18n="profile_sec_personal">Demographic Details</h4>
+                                        <p>Age, social category, and family structure for statutory reservation and age-gated benefits</p>
+                                    </div>
+                                </div>
+                                <div class="profile-grid">
+                                    <div class="form-group">
+                                        <label for="prof-age"><span data-i18n="lbl_age">Age (Years)</span>: <span class="req-star">*</span></label>
+                                        <input type="number" id="prof-age" min="1" max="120" placeholder="e.g. 35" required disabled>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="prof-gender" data-i18n="lbl_gender">Gender:</label>
+                                        <select id="prof-gender" disabled>
+                                            <option value="Male" data-i18n="gender_male">Male</option>
+                                            <option value="Female" data-i18n="gender_female">Female</option>
+                                            <option value="Other" data-i18n="gender_other">Other / Transgender</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="prof-category" data-i18n="lbl_social_category">Social Category:</label>
+                                        <select id="prof-category" disabled>
+                                            <option value="General" data-i18n="cat_general">General</option>
+                                            <option value="OBC" data-i18n="cat_obc">OBC (Other Backward Class)</option>
+                                            <option value="SC" data-i18n="cat_sc">SC (Scheduled Caste)</option>
+                                            <option value="ST" data-i18n="cat_st">ST (Scheduled Tribe)</option>
+                                            <option value="EWS" data-i18n="cat_ebc">EWS (Economically Weaker Section)</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="prof-marital" data-i18n="lbl_marital_status">Marital Status:</label>
+                                        <select id="prof-marital" disabled>
+                                            <option value="Married" data-i18n="marital_married">Married</option>
+                                            <option value="Single" data-i18n="marital_single">Single / Unmarried</option>
+                                            <option value="Widowed" data-i18n="marital_widowed">Widowed</option>
+                                            <option value="Divorced" data-i18n="marital_separated">Divorced / Separated</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="prof-pwd" data-i18n="lbl_diff_abled">Differently Abled (PwD / Divyangjan):</label>
+                                        <select id="prof-pwd" disabled>
+                                            <option value="0" data-i18n="diff_abled_no">No</option>
+                                            <option value="1" data-i18n="diff_abled_yes">Yes (40%+ Disability Certificate)</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="prof-family-count" data-i18n="lbl_family_members">Family Members Count:</label>
+                                        <input type="number" id="prof-family-count" min="1" max="25" placeholder="e.g. 4" value="4" disabled>
+                                    </div>
+                                </div>
                             </div>
+
+                            <!-- SECTION 3: OCCUPATIONAL DETAILS -->
+                            <div class="profile-section-block">
+                                <div class="profile-section-header">
+                                    <div class="section-icon"><i class="fa-solid fa-briefcase"></i></div>
+                                    <div>
+                                        <h4 data-i18n="profile_sec_socio">Occupational Details</h4>
+                                        <p>Primary livelihood and landholding criteria for trade loans and farmer subsidies</p>
+                                    </div>
+                                </div>
+                                <div class="profile-grid">
+                                    <div class="form-group">
+                                        <label for="prof-occupation"><span data-i18n="lbl_occupation">Occupation / Trade</span>: <span class="req-star">*</span></label>
+                                        <input type="text" id="prof-occupation" placeholder="e.g. Farmer, Street Vendor, Artisan, Student" required disabled>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="prof-land" data-i18n="lbl_landholding">Agricultural Land Ownership (Hectares):</label>
+                                        <input type="number" id="prof-land" min="0" step="0.1" value="0.0" placeholder="0.0 for non-agricultural" disabled>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- SECTION 4: FINANCIAL DETAILS -->
+                            <div class="profile-section-block">
+                                <div class="profile-section-header">
+                                    <div class="section-icon"><i class="fa-solid fa-indian-rupee-sign"></i></div>
+                                    <div>
+                                        <h4 data-i18n="profile_sec_socio">Financial Details</h4>
+                                        <p>Household income thresholds and welfare ration entitlements</p>
+                                    </div>
+                                </div>
+                                <div class="profile-grid">
+                                    <div class="form-group">
+                                        <label for="prof-income"><span data-i18n="lbl_annual_income">Annual Family Income (₹)</span>: <span class="req-star">*</span></label>
+                                        <input type="number" id="prof-income" min="0" step="5000" placeholder="e.g. 120000" required disabled>
+                                    </div>
+                                    <div class="form-group checkbox-cell">
+                                        <label class="form-label-standalone" data-i18n="lbl_bpl_status">Poverty Line Entitlement:</label>
+                                        <label class="checkbox-container">
+                                            <input type="checkbox" id="prof-bpl" disabled>
+                                            <span class="checkmark"></span>
+                                            <span>Below Poverty Line (BPL) / Antyodaya Anna Yojana Cardholder</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- SECTION 5: RESIDENTIAL DETAILS -->
+                            <div class="profile-section-block">
+                                <div class="profile-section-header">
+                                    <div class="section-icon"><i class="fa-solid fa-house-chimney"></i></div>
+                                    <div>
+                                        <h4 data-i18n="profile_sec_residential">Residential Details</h4>
+                                        <p>Geographical jurisdiction for state-specific and urban/rural targeted welfare programs</p>
+                                    </div>
+                                </div>
+                                <div class="profile-grid">
+                                    <div class="form-group">
+                                        <label for="prof-residence" data-i18n="lbl_residence_area">Residence Area:</label>
+                                        <select id="prof-residence" disabled>
+                                            <option value="Urban" data-i18n="area_urban">Urban</option>
+                                            <option value="Rural" data-i18n="area_rural">Rural</option>
+                                            <option value="Semi-Urban" data-i18n="area_semi_urban">Semi-Urban</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="prof-state"><span data-i18n="lbl_state">State</span>: <span class="req-star">*</span></label>
+                                        <input type="text" id="prof-state" placeholder="e.g. Rajasthan" required disabled>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="prof-district"><span data-i18n="lbl_district">District</span>: <span class="req-star">*</span></label>
+                                        <input type="text" id="prof-district" placeholder="e.g. Jaipur" required disabled>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- BOTTOM ACTION BAR -->
+                            <div class="profile-actions-bar">
+                                <div class="profile-mode-notice" id="profile-mode-notice">
+                                    <i class="fa-solid fa-circle-info"></i>
+                                    <span>This profile is in <strong>Read-Only Mode</strong>. Click <strong>Edit Profile</strong> to modify your details.</span>
+                                </div>
+                                <div class="profile-bottom-buttons">
+                                    <button type="button" id="btn-bottom-edit" class="btn btn-primary" onclick="setProfileEditMode(true)">
+                                        <i class="fa-solid fa-pen-to-square"></i> <span data-i18n="btn_edit_profile">Edit Profile</span>
+                                    </button>
+                                    <div id="profile-bottom-edit-group" style="display: none; gap: 12px;">
+                                        <button type="button" id="btn-bottom-cancel" class="btn btn-secondary" onclick="cancelProfileEdit()">
+                                            <i class="fa-solid fa-xmark"></i> <span data-i18n="btn_cancel">Cancel</span>
+                                        </button>
+                                        <button type="submit" id="btn-bottom-save" class="btn btn-primary">
+                                            <i class="fa-solid fa-floppy-disk"></i> <span data-i18n="btn_save_changes">Save Changes</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
                         </form>
                     </div>
                 </div>
+
 
                 <!-- ========================================== -->
                 <!-- PAGE 8: PRIVACY & CONSENT                  -->
@@ -1211,7 +1607,7 @@
                     <div class="panel-header-row">
                         <div>
                             <h2><i class="fa-solid fa-shield-halved"></i> Privacy, Safety & Citizen Consent</h2>
-                            <p>How Sahayak protects citizen rights, handles mock data, and enforces human-in-the-loop validation.</p>
+                            <p>How JanSetu protects citizen rights, handles mock data, and enforces human-in-the-loop validation.</p>
                         </div>
                     </div>
 
@@ -1225,13 +1621,13 @@
                         <div class="privacy-card">
                             <i class="fa-solid fa-file-excel"></i>
                             <h3>No Sensitive Identity Uploads</h3>
-                            <p>Do not upload real Aadhaar cards or sensitive banking credentials. Sahayak provides pre-verified synthetic demo credentials for hackathon evaluation.</p>
+                            <p>Do not upload real Aadhaar cards or sensitive banking credentials. JanSetu provides pre-verified synthetic demo credentials for hackathon evaluation.</p>
                         </div>
 
                         <div class="privacy-card">
                             <i class="fa-solid fa-server"></i>
                             <h3>Simulated Registry Isolation</h3>
-                            <p>Application IDs (e.g. <code>SHK-2025-XXXXX</code>) and scrutiny timelines run in an isolated SQLite demo registry. No live government portal APIs are invoked.</p>
+                            <p>Application IDs (e.g. <code>JS-2025-XXXXX</code>) and scrutiny timelines run in an isolated SQLite demo registry. No live government portal APIs are invoked.</p>
                         </div>
 
                         <div class="privacy-card">
@@ -1301,14 +1697,14 @@
     </div>
 
     <!-- ============================================================== -->
-    <!-- SLIDE-OVER DRAWER: ASK SAHAYAK MITRA (SECONDARY SEARCH CHATBOT)-->
+    <!-- SLIDE-OVER DRAWER: ASK JANSETU MITRA (SECONDARY SEARCH CHATBOT)-->
     <!-- ============================================================== -->
-    <aside class="chatbot-drawer" id="chatbot-sidebar" aria-label="Sahayak Mitra Assistant">
+    <aside class="chatbot-drawer" id="chatbot-sidebar" aria-label="JanSetu Mitra Assistant">
         <div class="drawer-header">
             <div class="drawer-bot-info">
                 <div class="drawer-avatar"><i class="fa-solid fa-robot"></i></div>
                 <div>
-                    <h4>Sahayak Mitra</h4>
+                    <h4>JanSetu Mitra</h4>
                     <span class="drawer-status"><i class="fa-solid fa-circle"></i> AI Welfare Advisor</span>
                 </div>
             </div>
@@ -1317,9 +1713,9 @@
 
         <div class="drawer-messages" id="chat-messages">
             <div class="chat-bubble bot-message">
-                <div class="msg-author"><i class="fa-solid fa-robot"></i> Sahayak Mitra</div>
+                <div class="msg-author"><i class="fa-solid fa-robot"></i> JanSetu Mitra</div>
                 <div class="msg-content">
-                    Namaste! 🙏 I am <strong>Sahayak Mitra</strong>, your secondary query assistant.
+                    Namaste! 🙏 I am <strong>JanSetu Mitra</strong>, your secondary query assistant.
                     <br><br>
                     You can ask me quick questions about scheme rules, subsidy percentages, or required documents.
                 </div>
@@ -1339,20 +1735,25 @@
     </aside>
 
     <!-- Floating Chat Trigger Bubble -->
-    <button class="floating-chat-bubble" id="btn-floating-chat" onclick="toggleChatbot(true)" title="Ask Sahayak Mitra">
+    <button class="floating-chat-bubble" id="btn-floating-chat" onclick="toggleChatbot(true)" title="Ask JanSetu Mitra">
         <i class="fa-solid fa-comment-dots"></i>
         <span>Ask Mitra</span>
     </button>
 
     <!-- Notifications Modal Overlay -->
-    <div class="modal-overlay" id="notifications-modal" style="display: none;">
-        <div class="modal-card">
+    <div class="modal-overlay" id="notifications-modal" style="display: none;" onclick="if(event.target===this)toggleNotificationsModal(false)">
+        <div class="modal-card notifications-modal-card" role="dialog" aria-modal="true" aria-labelledby="notifications-modal-title">
             <div class="modal-header">
-                <h3><i class="fa-regular fa-bell"></i> Citizen Notifications</h3>
-                <button class="modal-close-btn" onclick="toggleNotificationsModal(false)"><i class="fa-solid fa-xmark"></i></button>
+                <h3 id="notifications-modal-title"><i class="fa-regular fa-bell"></i> Citizen Notifications & Alerts</h3>
+                <button class="modal-close-btn" onclick="toggleNotificationsModal(false)" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
             </div>
-            <div class="notifications-list" id="modal-notifications-container">
-                <!-- Populated by JS -->
+            <div class="modal-body">
+                <div class="notifications-list" id="modal-notifications-container">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="toggleNotificationsModal(false)">Close</button>
             </div>
         </div>
     </div>
@@ -1527,6 +1928,99 @@
     <!-- Toast Notification Container -->
     <div id="toast-container" class="toast-container"></div>
 
+    <!-- ============================================================== -->
+    <!-- MODAL: UPLOAD DOCUMENT                                         -->
+    <!-- ============================================================== -->
+    <div class="modal-overlay" id="upload-doc-modal" style="display:none;" onclick="handleUploadModalBackdrop(event)">
+        <div class="modal-card upload-doc-modal-card" role="dialog" aria-modal="true" aria-labelledby="upload-modal-title">
+            <div class="modal-header">
+                <h3 id="upload-modal-title"><i class="fa-solid fa-cloud-arrow-up"></i> Upload Document</h3>
+                <button class="modal-close-btn" onclick="closeUploadDocModal()" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <form id="upload-doc-form" onsubmit="handleUploadDocFormSubmit(event)" novalidate>
+                <div class="modal-body">
+                    <!-- Fulfilling Target Requirement Notification Banner -->
+                    <div id="upload-target-requirement-banner" style="display:none; margin-bottom: 14px; padding: 10px 14px; background: rgba(30, 58, 138, 0.08); border-left: 4px solid var(--color-navy); border-radius: 6px; font-size: 13px; color: var(--color-navy);">
+                        <i class="fa-solid fa-file-circle-check"></i> Fulfilling requirement: <strong id="upload-target-req-text"></strong>
+                    </div>
+
+                    <!-- Category Dropdown -->
+                    <div class="form-group">
+                        <label for="upload-modal-category">Document Category <span class="required-star">*</span></label>
+                        <select id="upload-modal-category" required>
+                            <option value="" disabled selected>-- Select category --</option>
+                            <option value="application_form">Duly Filled Application Form / KCC Form</option>
+                            <option value="photo">Passport Size Photograph</option>
+                            <option value="aadhaar">Aadhaar Card (Identity Proof)</option>
+                            <option value="identity_proof">Identity Proof (Voter ID / Driving License / PAN)</option>
+                            <option value="bank_passbook">Bank Passbook / Statement</option>
+                            <option value="land_record">Land Ownership Document (Khatauni / Khasra / Lease)</option>
+                            <option value="address_proof">Proof of Address / Residence</option>
+                            <option value="income_certificate">Income Certificate / Salary Proof</option>
+                            <option value="caste_certificate">Caste / Category Certificate</option>
+                            <option value="vending_certificate">Certificate of Vending / Trade Proof</option>
+                            <option value="ration_card">Ration Card / Family ID</option>
+                            <option value="college_id">College ID / Admission Letter</option>
+                            <option value="other">Other Supporting Document</option>
+                        </select>
+                    </div>
+
+                    <!-- Display Name -->
+                    <div class="form-group">
+                        <label for="upload-modal-display-name">Document Display Name <span class="required-star">*</span></label>
+                        <input type="text" id="upload-modal-display-name" placeholder="e.g. My Aadhaar Card, Sunita's Bank Passbook" required maxlength="100">
+                        <span class="field-hint">This name will appear in your Documents list.</span>
+                    </div>
+
+                    <!-- File Picker -->
+                    <div class="form-group">
+                        <label for="upload-modal-file">Select File <span class="required-star">*</span></label>
+                        <div class="file-drop-zone" id="upload-file-drop-zone" onclick="document.getElementById('upload-modal-file').click()">
+                            <i class="fa-solid fa-file-arrow-up"></i>
+                            <p id="upload-file-label">Click to browse or drag & drop</p>
+                            <span>Supported: PDF, JPG, JPEG, PNG</span>
+                        </div>
+                        <input type="file" id="upload-modal-file" accept=".pdf,.jpg,.jpeg,.png" style="display:none;" onchange="handleFileSelection(this)" required>
+                    </div>
+
+                    <!-- Validation Message -->
+                    <div id="upload-modal-error" class="upload-error-msg" style="display:none;"></div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeUploadDocModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="btn-upload-submit">
+                        <i class="fa-solid fa-upload"></i>
+                        <span id="upload-btn-text">Upload Document</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal-overlay" id="delete-doc-modal" style="display:none;" onclick="handleDeleteModalBackdrop(event)">
+        <div class="modal-card delete-confirm-card" role="dialog" aria-modal="true">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-triangle-exclamation" style="color:var(--color-rose);"></i> Confirm Deletion</h3>
+                <button class="modal-close-btn" onclick="closeDeleteDocModal()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete <strong id="delete-doc-name-preview">this document</strong>?</p>
+                <p style="color:var(--text-muted); font-size:13px; margin-top:8px;">This action cannot be undone. The document will be permanently removed from your locker.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeDeleteDocModal()">Cancel</button>
+                <button class="btn btn-danger" id="btn-confirm-delete" onclick="confirmDeleteDocument()">
+                    <i class="fa-solid fa-trash"></i> Yes, Delete
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/translations.js"></script>
     <script src="/static/app.js"></script>
 </body>
 </html>
+

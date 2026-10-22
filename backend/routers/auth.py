@@ -10,7 +10,8 @@ from backend.db import (
     get_user_by_id,
     get_user_by_username_or_email,
     create_citizen_user,
-    update_citizen_profile
+    update_citizen_profile,
+    update_user_language
 )
 
 router = APIRouter(prefix="/api/users", tags=["Users & Profiles"])
@@ -25,16 +26,23 @@ class RegisterRequest(BaseModel):
     full_name: str
     email: str
     phone: Optional[str] = ""
+    password: Optional[str] = None
+    age: Optional[int] = None
+    gender: Optional[str] = None
+    occupation: Optional[str] = None
+    annual_income: Optional[float] = None
+    social_category: Optional[str] = None
+    bpl_status: Optional[str] = "No"  # "Yes", "No", "Not Sure"
+    is_bpl: Optional[bool] = False
     state: Optional[str] = "Rajasthan"
     district: Optional[str] = "Jaipur"
-    age: Optional[int] = 30
-    gender: Optional[str] = "Male"
-    occupation: Optional[str] = "Citizen"
-    annual_income: Optional[float] = 120000.0
-    social_category: Optional[str] = "General"
-    residence_area: Optional[str] = "Urban"
+    residence_area: Optional[str] = None
     land_ownership_hectares: Optional[float] = 0.0
-    is_bpl: Optional[bool] = False
+    marital_status: Optional[str] = "Single"
+    is_differently_abled: Optional[bool] = False
+    family_members_count: Optional[int] = 4
+    raw_attributes: Optional[Dict[str, Any]] = {}
+
 
 
 class DemoSessionRequest(BaseModel):
@@ -42,6 +50,11 @@ class DemoSessionRequest(BaseModel):
 
 
 class ProfileUpdateRequest(BaseModel):
+    full_name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    state: Optional[str] = None
+    district: Optional[str] = None
     age: Optional[int] = 35
     gender: Optional[str] = "Male"
     occupation: Optional[str] = "Worker"
@@ -87,16 +100,27 @@ def register(req: RegisterRequest):
             "user": existing
         }
 
-    profile_data = {
-        "age": req.age,
-        "gender": req.gender,
-        "occupation": req.occupation,
-        "annual_income": req.annual_income,
-        "social_category": req.social_category,
-        "residence_area": req.residence_area,
-        "land_ownership_hectares": req.land_ownership_hectares,
-        "is_bpl": req.is_bpl
+    is_bpl_val = req.is_bpl or (req.bpl_status == "Yes")
+    raw_attrs = {
+        "bpl_status": req.bpl_status or ("Yes" if is_bpl_val else "No"),
+        **(req.raw_attributes or {})
     }
+
+    profile_data = {
+        "age": req.age if req.age is not None else 30,
+        "gender": req.gender or "Other",
+        "occupation": req.occupation or "Citizen",
+        "annual_income": req.annual_income if req.annual_income is not None else 0.0,
+        "social_category": req.social_category or "General",
+        "residence_area": req.residence_area or "Urban",
+        "land_ownership_hectares": req.land_ownership_hectares if req.land_ownership_hectares is not None else 0.0,
+        "marital_status": req.marital_status or "Single",
+        "is_differently_abled": bool(req.is_differently_abled),
+        "family_members_count": req.family_members_count if req.family_members_count is not None else 1,
+        "is_bpl": is_bpl_val,
+        "raw_attributes": raw_attrs
+    }
+
     new_user = create_citizen_user(
         username=req.username,
         full_name=req.full_name,
@@ -164,3 +188,17 @@ def update_profile(user_id: int, req: ProfileUpdateRequest):
     update_citizen_profile(user_id, profile_dict)
     updated = get_user_by_id(user_id)
     return {"message": "Profile updated successfully", "user": updated}
+
+
+class LanguageUpdateRequest(BaseModel):
+    language: str
+
+
+@router.put("/{user_id}/language")
+def set_user_language(user_id: int, req: LanguageUpdateRequest):
+    """Updates the citizen's preferred interface language."""
+    user = get_user_by_id(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    update_user_language(user_id, req.language)
+    return {"message": "Language updated successfully", "preferred_language": req.language}

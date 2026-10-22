@@ -97,12 +97,21 @@ Citizen's Current Message:
         metadata={"cited_schemes": [s["code"] for s in retrieved_schemes]}
     )
 
-    # 7. Formulate suggested follow-up questions
-    suggested_prompts = [
-        "What documents do I need to prepare?",
-        "Am I eligible based on my income?",
-        "How do I start my application draft?"
-    ]
+    # 7. Formulate dynamic suggested follow-up questions
+    if retrieved_schemes:
+        top_s = retrieved_schemes[0]
+        code_or_name = top_s.get("code") or (top_s["name"][:25] + "...")
+        suggested_prompts = [
+            f"What documents do I need for {code_or_name}?",
+            f"Am I eligible for {code_or_name}?",
+            "How do I apply on the official portal?"
+        ]
+    else:
+        suggested_prompts = [
+            "What scholarships are available for college students?",
+            "How does Ayushman Bharat health insurance work?",
+            "How can street vendors get loans under PM SVANidhi?"
+        ]
 
     return {
         "reply": assistant_reply,

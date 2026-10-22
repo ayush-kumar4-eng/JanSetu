@@ -1,5 +1,5 @@
 /**
- * Sahayak (सहायक) — Frontend Application Controller
+ * JanSetu (जनसेतु) — Frontend Application Controller
  * Orchestrates the Public Landing Page, Authentication & Demo Access,
  * Modern Dashboard, Dedicated Scheme Discovery, and 5-Agent Workflow.
  */
@@ -25,8 +25,143 @@ const state = {
     allApplications: [],
     allDocuments: [],
     notifications: [],
-    chatSessionId: "sahayak_session_" + Math.random().toString(36).substring(2, 9)
+    chatSessionId: "jansetu_session_" + Math.random().toString(36).substring(2, 9),
+    currentLang: localStorage.getItem("jansetu_lang") || "en"
 };
+
+// ==============================================================
+// Multilingual Translation Engine (5 Languages)
+// ==============================================================
+
+function t(key, fallback = "") {
+    const lang = state.currentLang || "en";
+    if (window.TRANSLATIONS && window.TRANSLATIONS[lang] && window.TRANSLATIONS[lang][key] !== undefined) {
+        return window.TRANSLATIONS[lang][key];
+    }
+    if (window.TRANSLATIONS && window.TRANSLATIONS["en"] && window.TRANSLATIONS["en"][key] !== undefined) {
+        return window.TRANSLATIONS["en"][key];
+    }
+    return fallback || key;
+}
+
+async function changeLanguage(langCode, saveToProfile = true) {
+    if (!["en", "hi", "mr", "bn", "ta"].includes(langCode)) langCode = "en";
+    state.currentLang = langCode;
+    localStorage.setItem("jansetu_lang", langCode);
+
+    // Sync all dropdowns
+    const appSelect = document.getElementById("app-lang-select");
+    if (appSelect) appSelect.value = langCode;
+    const landingSelect = document.getElementById("landing-lang-select");
+    if (landingSelect) landingSelect.value = langCode;
+
+    // Update document HTML lang attribute
+    document.documentElement.lang = langCode;
+
+    // Translate DOM elements with data-i18n
+    document.querySelectorAll("[data-i18n]").forEach(el => {
+        const key = el.getAttribute("data-i18n");
+        const val = t(key);
+        if (val) {
+            const icon = el.querySelector("i");
+            if (icon) {
+                const iconHtml = icon.outerHTML;
+                el.innerHTML = `${iconHtml} <span>${escapeHtml(val)}</span>`;
+            } else {
+                el.textContent = val;
+            }
+        }
+    });
+
+    // Translate placeholders
+    document.querySelectorAll("[data-i18n-placeholder]").forEach(el => {
+        const key = el.getAttribute("data-i18n-placeholder");
+        const val = t(key);
+        if (val) el.placeholder = val;
+    });
+
+    // Translate titles
+    document.querySelectorAll("[data-i18n-title]").forEach(el => {
+        const key = el.getAttribute("data-i18n-title");
+        const val = t(key);
+        if (val) el.title = val;
+    });
+
+    // Refresh dynamic components without wiping workflow or form inputs
+    refreshDynamicTranslations();
+
+    // Persist to user profile backend if logged in
+    if (saveToProfile && state.currentUser && state.currentUser.id) {
+        try {
+            await fetch(`/api/users/${state.currentUser.id}/language`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ language: langCode })
+            });
+            if (state.currentUser.raw_attributes) {
+                state.currentUser.raw_attributes.preferred_language = langCode;
+            }
+        } catch (err) {
+            console.warn("Could not persist language to user profile:", err);
+        }
+    }
+}
+
+function refreshDynamicTranslations() {
+    // 1. Profile mode badges and buttons
+    const badgeReadonly = document.getElementById("profile-badge-readonly");
+    if (badgeReadonly) badgeReadonly.innerHTML = `<i class="fa-solid fa-lock"></i> <span>${t("profile_readonly_badge", "Verified Profile (Read-Only)")}</span>`;
+    const badgeEditing = document.getElementById("profile-badge-editing");
+    if (badgeEditing) badgeEditing.innerHTML = `<i class="fa-solid fa-pen-to-square"></i> <span>${t("profile_edit_badge", "Editing Mode Active")}</span>`;
+    
+    const btnEdit = document.getElementById("btn-edit-profile");
+    if (btnEdit) {
+        const span = btnEdit.querySelector("span");
+        if (span) span.textContent = t("btn_edit_profile", "Edit Profile");
+    }
+    const btnCancel = document.getElementById("btn-cancel-profile");
+    if (btnCancel) {
+        const span = btnCancel.querySelector("span");
+        if (span) span.textContent = t("btn_cancel", "Cancel");
+    }
+    const btnSave = document.getElementById("btn-save-profile");
+    if (btnSave) {
+        const span = btnSave.querySelector("span");
+        if (span) span.textContent = t("btn_save_changes", "Save Changes");
+    }
+
+    // 2. Mitra Drawer Suggestions
+    renderMitraDrawerSuggestions();
+
+    // 3. Schemes Catalog Card Refresh (preserving existing list and state)
+    if (state.allSchemes && state.allSchemes.length > 0) {
+        const grid = document.getElementById("catalog-schemes-grid");
+        if (grid && grid.children.length > 0) {
+            renderCatalogSchemes(state.allSchemes);
+        }
+        renderPublicSchemesPreview();
+    }
+
+    // 4. Dashboard Banner text
+    if (state.currentUser) {
+        updateDashboardBanner();
+    }
+}
+
+function renderMitraDrawerSuggestions(customPrompts) {
+    const container = document.querySelector(".drawer-suggestions");
+    if (!container) return;
+
+    const prompts = customPrompts || [
+        t("prompt_q1", "What documents are required for PM-KISAN?"),
+        t("prompt_q2", "Am I eligible for PM SVANidhi?"),
+        t("prompt_q3", "How can I check my application status?")
+    ];
+
+    container.innerHTML = prompts.map(p => `
+        <button type="button" class="drawer-chip" onclick="sendChatPrompt('${escapeHtml(p).replace(/'/g, "\\'")}')">${escapeHtml(p)}</button>
+    `).join("");
+}
 
 // ==============================================================
 // DOM Content Loaded Initializer
@@ -38,8 +173,13 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 async function checkAuthAndInitialize() {
+    // Initialize language from localStorage or default 'en'
+    const savedLang = localStorage.getItem("jansetu_lang") || "en";
+    state.currentLang = savedLang;
+    changeLanguage(savedLang, false);
+
     // Check if session exists in localStorage
-    const savedUserJson = localStorage.getItem("sahayak_user");
+    const savedUserJson = localStorage.getItem("jansetu_user") || localStorage.getItem("sahayak_user");
     
     // Always load public scheme preview & user personas in background
     await loadUsersAndPersonas();
@@ -51,11 +191,20 @@ async function checkAuthAndInitialize() {
             state.isAuthenticated = true;
             state.activeUserId = user.id;
             state.currentUser = user;
+
+            // If user has a preferred language in profile, apply it
+            if (user.raw_attributes && user.raw_attributes.preferred_language) {
+                state.currentLang = user.raw_attributes.preferred_language;
+                localStorage.setItem("jansetu_lang", state.currentLang);
+                changeLanguage(state.currentLang, false);
+            }
+
             showPortalApp();
             await refreshUserData(user.id);
             return;
         } catch (e) {
             console.error("Invalid saved session:", e);
+            localStorage.removeItem("jansetu_user");
             localStorage.removeItem("sahayak_user");
         }
     }
@@ -63,6 +212,7 @@ async function checkAuthAndInitialize() {
     // Default: Show Public Landing Page
     showPublicLanding();
 }
+
 
 function setupEventListeners() {
     // Keyboard Escape to close modals
@@ -75,8 +225,43 @@ function setupEventListeners() {
             closeDeleteModal();
             toggleNotificationsModal(false);
             toggleChatbot(false);
+            closeUploadDocModal();
+            closeDeleteDocModal();
         }
     });
+
+    // File Drag and Drop Support
+    const dropZone = document.getElementById("upload-file-drop-zone");
+    const fileInput = document.getElementById("upload-modal-file");
+    if (dropZone && fileInput) {
+        ["dragenter", "dragover", "dragleave", "drop"].forEach(eventName => {
+            dropZone.addEventListener(eventName, e => {
+                e.preventDefault();
+                e.stopPropagation();
+            }, false);
+        });
+
+        ["dragenter", "dragover"].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => {
+                dropZone.classList.add("drag-over");
+            }, false);
+        });
+
+        ["dragleave", "drop"].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => {
+                dropZone.classList.remove("drag-over");
+            }, false);
+        });
+
+        dropZone.addEventListener("drop", e => {
+            const dt = e.dataTransfer;
+            const files = dt?.files;
+            if (files && files.length > 0) {
+                fileInput.files = files;
+                handleFileSelection(fileInput);
+            }
+        }, false);
+    }
 }
 
 // ==============================================================
@@ -140,7 +325,11 @@ function switchAuthTab(tabId) {
     document.querySelectorAll(".auth-tab-content").forEach(content => {
         content.classList.toggle("active", content.id === tabId);
     });
+    if (tabId === "auth-tab-register" && typeof backToRegistrationForm === "function") {
+        backToRegistrationForm();
+    }
 }
+
 
 async function loginAsDemoPersona(personaKey) {
     try {
@@ -188,47 +377,299 @@ async function handleSignInSubmit(event) {
     }
 }
 
-async function handleRegisterSubmit(event) {
-    event.preventDefault();
-    const payload = {
-        full_name: document.getElementById("reg-fullname").value.trim(),
-        username: document.getElementById("reg-username").value.trim(),
-        email: document.getElementById("reg-email").value.trim(),
-        phone: document.getElementById("reg-phone").value.trim(),
-        occupation: document.getElementById("reg-occupation").value.trim(),
-        annual_income: parseFloat(document.getElementById("reg-income").value) || 120000
+// ==============================================================
+// Citizen Registration Controller (5 Sections + Review Step)
+// ==============================================================
+
+let pendingRegistrationPayload = null;
+
+function showRegAlert(message, type = "danger") {
+    const alertBox = document.getElementById("reg-alert-box");
+    if (!alertBox) return;
+
+    let icon = "fa-circle-exclamation";
+    if (type === "success") icon = "fa-circle-check";
+    if (type === "info") icon = "fa-circle-info";
+
+    alertBox.className = `profile-alert alert-${type}`;
+    alertBox.innerHTML = `
+        <i class="fa-solid ${icon}"></i>
+        <div style="flex: 1;">${escapeHtml(message)}</div>
+        <button type="button" class="btn-close-alert" onclick="this.parentElement.style.display='none'" style="background:none; border:none; color:inherit; cursor:pointer; font-size:18px; line-height:1;">&times;</button>
+    `;
+    alertBox.style.display = "flex";
+    alertBox.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+function validateRegistrationForm() {
+    // Clear old errors
+    document.querySelectorAll("#form-register .has-error").forEach(el => el.classList.remove("has-error"));
+    const alertBox = document.getElementById("reg-alert-box");
+    if (alertBox) alertBox.style.display = "none";
+
+    const fullName = document.getElementById("reg-fullname")?.value.trim() || "";
+    const username = document.getElementById("reg-username")?.value.trim() || "";
+    const email = document.getElementById("reg-email")?.value.trim() || "";
+    const phone = document.getElementById("reg-phone")?.value.trim() || "";
+    const password = document.getElementById("reg-password")?.value || "";
+    const confirmPassword = document.getElementById("reg-confirm-password")?.value || "";
+
+    const ageVal = document.getElementById("reg-age")?.value.trim() || "";
+    const age = parseInt(ageVal, 10);
+    const gender = document.getElementById("reg-gender")?.value || "";
+
+    const occupation = document.getElementById("reg-occupation")?.value.trim() || "";
+    const incomeVal = document.getElementById("reg-income")?.value.trim() || "";
+    const income = parseFloat(incomeVal);
+    const category = document.getElementById("reg-category")?.value || "";
+    const bplStatus = document.getElementById("reg-bpl")?.value || "";
+
+    const stateVal = document.getElementById("reg-state")?.value.trim() || "";
+    const districtVal = document.getElementById("reg-district")?.value.trim() || "";
+    const residence = document.getElementById("reg-residence")?.value || "";
+
+    const landVal = document.getElementById("reg-land")?.value.trim() || "";
+    const land = landVal ? parseFloat(landVal) : 0.0;
+    const marital = document.getElementById("reg-marital")?.value || "";
+    const pwd = document.getElementById("reg-pwd")?.value || "";
+    const familyCountVal = document.getElementById("reg-family-count")?.value.trim() || "";
+    const familyCount = familyCountVal ? parseInt(familyCountVal, 10) : 1;
+
+    // SECTION A VALIDATION
+    if (!fullName || fullName.length < 2) {
+        return { isValid: false, message: "Full Name is required (at least 2 characters).", fieldId: "reg-fullname" };
+    }
+    if (!username || username.length < 3) {
+        return { isValid: false, message: "Username is required (at least 3 characters).", fieldId: "reg-username" };
+    }
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return { isValid: false, message: "Please provide a valid email address.", fieldId: "reg-email" };
+    }
+    if (phone && !/^[0-9+\-\s]{8,15}$/.test(phone)) {
+        return { isValid: false, message: "Please enter a valid phone number (at least 8 digits).", fieldId: "reg-phone" };
+    }
+    if (!password || password.length < 6) {
+        return { isValid: false, message: "Password is required (minimum 6 characters).", fieldId: "reg-password" };
+    }
+    if (password !== confirmPassword) {
+        return { isValid: false, message: "Password and Confirm Password do not match.", fieldId: "reg-confirm-password" };
+    }
+
+    // SECTION B VALIDATION
+    if (!ageVal || isNaN(age) || age < 1 || age > 120) {
+        return { isValid: false, message: "Please provide a valid Age between 1 and 120 years.", fieldId: "reg-age" };
+    }
+    if (!gender) {
+        return { isValid: false, message: "Please select your Gender from the dropdown (no option is preselected).", fieldId: "reg-gender" };
+    }
+
+    // SECTION C VALIDATION
+    if (!occupation) {
+        return { isValid: false, message: "Occupation / Primary Trade is required for scheme eligibility.", fieldId: "reg-occupation" };
+    }
+    if (!incomeVal || isNaN(income) || income < 0) {
+        return { isValid: false, message: "Please provide your Annual Family Income (0 or greater).", fieldId: "reg-income" };
+    }
+    if (!category) {
+        return { isValid: false, message: "Please select your Social Category from the dropdown.", fieldId: "reg-category" };
+    }
+    if (!bplStatus) {
+        return { isValid: false, message: "Please select your BPL / Antyodaya status (Yes, No, or Not Sure).", fieldId: "reg-bpl" };
+    }
+
+    // SECTION D VALIDATION
+    if (!stateVal) {
+        return { isValid: false, message: "State of residence is required.", fieldId: "reg-state" };
+    }
+    if (!districtVal) {
+        return { isValid: false, message: "District is required.", fieldId: "reg-district" };
+    }
+    if (!residence) {
+        return { isValid: false, message: "Please select your Residence Area type (Rural, Semi-Urban, or Urban).", fieldId: "reg-residence" };
+    }
+
+    // SECTION E VALIDATION
+    if (isNaN(land) || land < 0) {
+        return { isValid: false, message: "Agricultural landholding cannot be negative.", fieldId: "reg-land" };
+    }
+    if (isNaN(familyCount) || familyCount < 1) {
+        return { isValid: false, message: "Family members count must be at least 1.", fieldId: "reg-family-count" };
+    }
+
+    return {
+        isValid: true,
+        payload: {
+            full_name: fullName,
+            username: username,
+            email: email,
+            phone: phone,
+            password: password,
+            age: age,
+            gender: gender,
+            occupation: occupation,
+            annual_income: income,
+            social_category: category,
+            bpl_status: bplStatus,
+            is_bpl: bplStatus === "Yes",
+            state: stateVal,
+            district: districtVal,
+            residence_area: residence,
+            land_ownership_hectares: land,
+            marital_status: marital || "Single",
+            is_differently_abled: pwd === "1",
+            family_members_count: familyCount
+        }
     };
+}
+
+function handleReviewRegistration(event) {
+    if (event) event.preventDefault();
+
+    const validation = validateRegistrationForm();
+    if (!validation.isValid) {
+        const inputEl = document.getElementById(validation.fieldId);
+        if (inputEl) {
+            inputEl.classList.add("has-error");
+            inputEl.focus();
+        }
+        showRegAlert(validation.message, "danger");
+        showToast(validation.message, "error");
+        return;
+    }
+
+    pendingRegistrationPayload = validation.payload;
+    renderRegistrationReviewCard(pendingRegistrationPayload);
+
+    // Switch view from form to review
+    document.getElementById("reg-step-form").style.display = "none";
+    document.getElementById("reg-step-review").style.display = "block";
+    const tabEl = document.getElementById("auth-tab-register");
+    if (tabEl) tabEl.scrollTop = 0;
+}
+
+function backToRegistrationForm() {
+    const stepForm = document.getElementById("reg-step-form");
+    const stepReview = document.getElementById("reg-step-review");
+    if (stepForm) stepForm.style.display = "block";
+    if (stepReview) stepReview.style.display = "none";
+}
+
+function renderRegistrationReviewCard(p) {
+    const container = document.getElementById("reg-review-summary-content");
+    if (!container) return;
+
+    container.innerHTML = `
+        <div class="reg-review-section">
+            <div class="reg-review-section-title"><i class="fa-solid fa-shield-halved"></i> A. Account Information</div>
+            <div class="reg-review-grid">
+                <div class="reg-review-item"><label>Full Legal Name</label><div class="val">${escapeHtml(p.full_name)}</div></div>
+                <div class="reg-review-item"><label>Username</label><div class="val">@${escapeHtml(p.username)}</div></div>
+                <div class="reg-review-item"><label>Email Address</label><div class="val">${escapeHtml(p.email)}</div></div>
+                <div class="reg-review-item"><label>Mobile Phone</label><div class="val">${escapeHtml(p.phone || 'Not Provided')}</div></div>
+            </div>
+        </div>
+
+        <div class="reg-review-section">
+            <div class="reg-review-section-title"><i class="fa-solid fa-user"></i> B. Personal Information</div>
+            <div class="reg-review-grid">
+                <div class="reg-review-item"><label>Age</label><div class="val">${p.age} Years</div></div>
+                <div class="reg-review-item"><label>Gender</label><div class="val">${escapeHtml(p.gender)}</div></div>
+            </div>
+        </div>
+
+        <div class="reg-review-section">
+            <div class="reg-review-section-title"><i class="fa-solid fa-coins"></i> C. Socio-Economic Information</div>
+            <div class="reg-review-grid">
+                <div class="reg-review-item"><label>Occupation / Trade</label><div class="val">${escapeHtml(p.occupation)}</div></div>
+                <div class="reg-review-item"><label>Annual Family Income</label><div class="val">₹${p.annual_income.toLocaleString('en-IN')}/year</div></div>
+                <div class="reg-review-item"><label>Social Category</label><div class="val">${escapeHtml(p.social_category)}</div></div>
+                <div class="reg-review-item"><label>BPL / Antyodaya Status</label><div class="val">${escapeHtml(p.bpl_status)}</div></div>
+            </div>
+        </div>
+
+        <div class="reg-review-section">
+            <div class="reg-review-section-title"><i class="fa-solid fa-location-dot"></i> D. Residential Information</div>
+            <div class="reg-review-grid">
+                <div class="reg-review-item"><label>State</label><div class="val">${escapeHtml(p.state)}</div></div>
+                <div class="reg-review-item"><label>District</label><div class="val">${escapeHtml(p.district)}</div></div>
+                <div class="reg-review-item"><label>Area Type</label><div class="val">${escapeHtml(p.residence_area)}</div></div>
+            </div>
+        </div>
+
+        <div class="reg-review-section">
+            <div class="reg-review-section-title"><i class="fa-solid fa-id-badge"></i> E. Additional Eligibility Details</div>
+            <div class="reg-review-grid">
+                <div class="reg-review-item"><label>Agricultural Land</label><div class="val">${p.land_ownership_hectares > 0 ? p.land_ownership_hectares + ' Hectares' : 'None (0.0 ha)'}</div></div>
+                <div class="reg-review-item"><label>Family Members</label><div class="val">${p.family_members_count} Members</div></div>
+                <div class="reg-review-item"><label>Marital Status</label><div class="val">${escapeHtml(p.marital_status || 'Single')}</div></div>
+                <div class="reg-review-item"><label>Differently Abled (PwD)</label><div class="val">${p.is_differently_abled ? 'Yes (40%+ Disability)' : 'No'}</div></div>
+            </div>
+        </div>
+    `;
+}
+
+async function executeFinalRegistration() {
+    if (!pendingRegistrationPayload) {
+        backToRegistrationForm();
+        return;
+    }
+
+    const submitBtn = document.getElementById("btn-submit-final-register");
+    if (submitBtn) {
+        submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Creating Account...`;
+        submitBtn.disabled = true;
+    }
 
     try {
         const res = await fetch("/api/users/register", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
+            body: JSON.stringify(pendingRegistrationPayload)
         });
         const data = await res.json();
+
         if (res.ok && data.user) {
             setAuthenticatedUser(data.user);
             closeAuthModal();
-            showToast(`Citizen profile created: ${data.user.full_name}!`, "success");
+            showToast(`Welcome ${data.user.full_name}! Account created and profile verified.`, "success");
         } else {
-            showToast(data.detail || "Registration failed.", "error");
+            const errDetail = data.detail || data.message || "Registration failed.";
+            backToRegistrationForm();
+            showRegAlert(errDetail, "danger");
+            showToast(errDetail, "error");
         }
     } catch (err) {
-        console.error("Registration failed:", err);
-        showToast("Registration failed. Please use demo access.", "error");
+        console.error("Registration error:", err);
+        backToRegistrationForm();
+        showRegAlert("Connection error during registration. Please check server.", "danger");
+        showToast("Registration network error. Please try again.", "error");
+    } finally {
+        if (submitBtn) {
+            submitBtn.innerHTML = `<i class="fa-solid fa-user-check"></i> Confirm & Create Account`;
+            submitBtn.disabled = false;
+        }
     }
 }
+
 
 function setAuthenticatedUser(user) {
     state.isAuthenticated = true;
     state.activeUserId = user.id;
     state.currentUser = user;
+    if (user.raw_attributes && user.raw_attributes.preferred_language) {
+        state.currentLang = user.raw_attributes.preferred_language;
+        localStorage.setItem("jansetu_lang", state.currentLang);
+        changeLanguage(state.currentLang, false);
+    }
+    localStorage.setItem("jansetu_user", JSON.stringify(user));
     localStorage.setItem("sahayak_user", JSON.stringify(user));
     showPortalApp();
     refreshUserData(user.id);
 }
 
+
 function handleLogout() {
+    localStorage.removeItem("jansetu_user");
     localStorage.removeItem("sahayak_user");
     state.isAuthenticated = false;
     state.currentUser = null;
@@ -384,6 +825,7 @@ function navigateToPage(pageId) {
     } else if (pageId === "notifications") {
         renderNotificationsPage();
     } else if (pageId === "profile") {
+        setProfileEditMode(false);
         populateProfileForm();
     } else if (pageId === "dashboard") {
         updateDashboardMetrics();
@@ -564,19 +1006,20 @@ function createSchemeCardHtml(scheme, isRecommendation = false, isPublic = false
 
                 ${scheme.official_url ? `
                     <a href="${escapeHtml(scheme.official_url)}" target="_blank" rel="noopener noreferrer" class="scheme-source-link">
-                        <span>Official Source Portal</span> <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                        <span>${t("official_portal", "Official Source Portal")}</span> <i class="fa-solid fa-arrow-up-right-from-square"></i>
                     </a>
                 ` : ''}
             </div>
 
             <div class="scheme-card-actions">
-                <button class="btn btn-secondary btn-sm" onclick="openSchemeDetailsModal(${scheme.id})">
-                    <i class="fa-solid fa-circle-info"></i> Details
+                <button class="btn btn-secondary btn-sm" onclick="openSchemeDetailsModal(${scheme.id || scheme.scheme_id})">
+                    <i class="fa-solid fa-circle-info"></i> <span>${t("btn_view_details", "Details")}</span>
                 </button>
-                <button class="btn btn-primary btn-sm" onclick="${isPublic ? 'openAuthModal(\'demo\')' : `selectSchemeForWorkflow(${scheme.id})`}">
-                    <i class="fa-solid fa-wand-magic-sparkles"></i> Select & Apply
+                <button class="btn btn-primary btn-sm" onclick="${isPublic ? 'openAuthModal(\'demo\')' : `selectSchemeForWorkflow(${scheme.id || scheme.scheme_id})`}">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> <span>${t("btn_start_application", "Select & Apply")}</span>
                 </button>
             </div>
+
         </div>
     `;
 }
@@ -615,9 +1058,14 @@ function resetCatalogFilters() {
 // ==============================================================
 
 function openSchemeDetailsModal(schemeId) {
-    const scheme = state.allSchemes.find(s => s.id === schemeId);
+    const sId = Number(schemeId);
+    const scheme = state.allSchemes.find(s => s.id === sId || s.scheme_id === sId) ||
+                   state.currentMatches.find(s => s.id === sId || s.scheme_id === sId) ||
+                   state.allSchemes.find(s => s.id === schemeId);
     if (!scheme) return;
 
+    scheme.id = scheme.id || scheme.scheme_id || sId;
+    scheme.scheme_id = scheme.scheme_id || scheme.id || sId;
     state.selectedScheme = scheme;
 
     document.getElementById("modal-scheme-level").textContent = `${scheme.level || 'Central'} Scheme • ${scheme.state || 'All India'}`;
@@ -675,7 +1123,7 @@ function startWorkflowWithSchemeFromModal() {
         return;
     }
     if (state.selectedScheme) {
-        selectSchemeForWorkflow(state.selectedScheme.id);
+        selectSchemeForWorkflow(state.selectedScheme.id || state.selectedScheme.scheme_id);
     }
 }
 
@@ -823,9 +1271,15 @@ function renderMatchedSchemes(matches) {
 
 // Stage 2 -> 3: Select Scheme & Run Eligibility Audit
 async function selectSchemeForWorkflow(schemeId) {
-    const scheme = state.allSchemes.find(s => s.id === schemeId) || state.currentMatches.find(s => s.id === schemeId);
+    const sId = Number(schemeId) || (state.selectedScheme ? Number(state.selectedScheme.id || state.selectedScheme.scheme_id) : 1);
+    const scheme = state.allSchemes.find(s => s.id === sId || s.scheme_id === sId) || 
+                   state.currentMatches.find(s => s.id === sId || s.scheme_id === sId) ||
+                   state.allSchemes[0] ||
+                   state.currentMatches[0];
     if (!scheme) return;
 
+    scheme.id = scheme.id || scheme.scheme_id || sId;
+    scheme.scheme_id = scheme.scheme_id || scheme.id || sId;
     state.selectedScheme = scheme;
 
     // Transition to Assistant tab if called from catalog
@@ -843,8 +1297,8 @@ async function selectSchemeForWorkflow(schemeId) {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-                user_id: state.activeUserId,
-                scheme_id: scheme.id
+                user_id: Number(state.activeUserId) || 1,
+                scheme_id: Number(scheme.id || scheme.scheme_id) || 1
             })
         });
 
@@ -891,11 +1345,43 @@ function renderEligibilityAudit(assessment) {
         const ruleFact = r.citizen_fact || r.profile_val || r.explanation || r.reason || "Verified against citizen profile";
         const status = (r.status || "PASSED").toUpperCase();
         const badgeClass = status === "PASSED" ? "passed" : (status === "FAILED" ? "failed" : "self_declaration");
+
+        let uploadActionBtn = "";
+        const lower = ruleTitle.toLowerCase();
+        let targetCategory = "other";
+        let targetName = "Supporting Document";
+        if (lower.includes("income") || lower.includes("economic") || lower.includes("ceiling") || lower.includes("tax")) {
+            targetCategory = "income_certificate";
+            targetName = "Income Certificate Proof";
+        } else if (lower.includes("land") || lower.includes("hectare") || lower.includes("khasra") || lower.includes("acre")) {
+            targetCategory = "land_record";
+            targetName = "Land Record / Khatauni";
+        } else if (lower.includes("caste") || lower.includes("social") || lower.includes("category")) {
+            targetCategory = "caste_certificate";
+            targetName = "Caste Certificate";
+        } else if (lower.includes("vending") || lower.includes("trade") || lower.includes("occupation") || lower.includes("farmer")) {
+            targetCategory = "vending_certificate";
+            targetName = "Trade / Vending Certificate";
+        } else if (lower.includes("age") || lower.includes("identity") || lower.includes("citizen")) {
+            targetCategory = "aadhaar";
+            targetName = "Identity Proof (Aadhaar/Voter)";
+        }
+
+        if (status !== "PASSED") {
+            uploadActionBtn = `
+                <button type="button" class="btn btn-outline btn-xs" style="margin-top: 6px; font-size: 11px; padding: 3px 8px; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px;" onclick="openUploadDocModal('${targetCategory}', '${escapeHtml(targetName)}')">
+                    <i class="fa-solid fa-cloud-arrow-up"></i>
+                    <span>Upload Proof</span>
+                </button>
+            `;
+        }
+
         return `
             <div class="rule-audit-row">
-                <div class="rule-desc">
+                <div class="rule-desc" style="flex: 1;">
                     <strong>${escapeHtml(ruleTitle)}</strong>
-                    <div style="font-size: 12px; color: var(--text-muted)">Citizen Context: ${escapeHtml(ruleFact)}</div>
+                    <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Citizen Context: ${escapeHtml(ruleFact)}</div>
+                    ${uploadActionBtn}
                 </div>
                 <span class="rule-status-badge ${badgeClass}">${escapeHtml(status)}</span>
             </div>
@@ -932,13 +1418,15 @@ async function proceedToDocumentChecklist() {
 
     goToWorkflowStage(4);
 
+    const sid = Number(state.selectedScheme?.id || state.selectedScheme?.scheme_id) || 1;
+
     try {
         const res = await fetch("/api/workflow/audit-documents", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-                user_id: state.activeUserId,
-                scheme_id: state.selectedScheme.id
+                user_id: Number(state.activeUserId) || 1,
+                scheme_id: sid
             })
         });
 
@@ -1092,13 +1580,15 @@ async function generateAllDemoDocs() {
 async function proceedToApplicationDraft() {
     goToWorkflowStage(5);
 
+    const sid = Number(state.selectedScheme?.id || state.selectedScheme?.scheme_id) || 1;
+
     try {
         const res = await fetch("/api/workflow/generate-draft", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-                user_id: state.activeUserId,
-                scheme_id: state.selectedScheme.id,
+                user_id: Number(state.activeUserId) || 1,
+                scheme_id: sid,
                 user_query: state.intakeAnalysis?.extracted_need || "Welfare support",
                 confirmed_criteria: state.confirmedRules
             })
@@ -1202,17 +1692,19 @@ async function executeSimulatedSubmission() {
         statement: document.getElementById("draft-statement")?.value || ""
     };
 
+    const sid = Number(state.selectedScheme?.id || state.selectedScheme?.scheme_id) || 1;
+
     try {
         const res = await fetch("/api/workflow/submit-simulated", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-                user_id: state.activeUserId,
-                scheme_id: state.selectedScheme.id,
+                user_id: Number(state.activeUserId) || 1,
+                scheme_id: sid,
                 explicit_approval: true,
                 applicant_data: applicantData,
                 eligibility_answers: state.confirmedRules,
-                draft_summary: `Application package for ${state.selectedScheme.name}`
+                draft_summary: `Application package for ${state.selectedScheme?.name || 'Welfare Scheme'}`
             })
         });
 
@@ -1328,6 +1820,7 @@ function renderApplicationsPage() {
 function showAppTrackingModal(refNumber) {
     showToast(`Tracking status for ${refNumber}: Preliminary Scrutiny In Progress`, "success");
 }
+
 
 async function loadUserDocuments() {
     try {
@@ -1862,6 +2355,7 @@ async function executeDeleteDocument() {
     }
 }
 
+
 async function loadNotifications() {
     try {
         const res = await fetch(`/api/notifications/user/${state.activeUserId}`);
@@ -1908,51 +2402,298 @@ function toggleNotificationsModal(show) {
     if (show) {
         const container = document.getElementById("modal-notifications-container");
         if (container) {
-            container.innerHTML = state.notifications.map(n => `
-                <div style="padding: 10px 0; border-bottom: 1px solid var(--border-subtle)">
-                    <strong style="font-size: 13px;">${escapeHtml(n.title)}</strong>
-                    <p style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">${escapeHtml(n.message)}</p>
-                </div>
-            `).join("") || "<p style='font-size: 13px; color: var(--text-muted)'>No active alerts.</p>";
+            if (!state.notifications || state.notifications.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 32px 16px; color: var(--text-muted);">
+                        <i class="fa-regular fa-bell-slash" style="font-size: 32px; margin-bottom: 10px; display: block; color: #94a3b8;"></i>
+                        <p style="margin: 0; font-size: 14px;">No active alerts or notifications right now.</p>
+                    </div>
+                `;
+            } else {
+                container.innerHTML = state.notifications.map(n => {
+                    const timeStr = n.created_at ? new Date(n.created_at).toLocaleString("en-IN", {
+                        day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit"
+                    }) : "Recent";
+                    return `
+                    <div class="notification-modal-item">
+                        <div class="notification-modal-icon">
+                            <i class="fa-solid fa-bell"></i>
+                        </div>
+                        <div class="notification-modal-body">
+                            <div class="notification-modal-title">${escapeHtml(n.title)}</div>
+                            <p class="notification-modal-desc">${escapeHtml(n.message)}</p>
+                            <span class="notification-modal-time"><i class="fa-regular fa-clock"></i> ${escapeHtml(timeStr)}</span>
+                        </div>
+                    </div>`;
+                }).join("");
+            }
         }
     }
 }
 
-// Profile Page
-function populateProfileForm() {
+// ==============================================================
+// Profile Page (Read-Only Default View & Edit Mode Controller)
+// ==============================================================
+
+function setProfileEditMode(isEditing) {
+    state.isProfileEditing = !!isEditing;
+    populateProfileForm(state.isProfileEditing);
+
+    const alertBox = document.getElementById("profile-alert-box");
+    if (alertBox) alertBox.style.display = "none";
+
+    // Clear any validation error highlights
+    document.querySelectorAll("#form-edit-profile .has-error").forEach(el => el.classList.remove("has-error"));
+
+    if (state.isProfileEditing) {
+        const firstField = document.getElementById("prof-name");
+        if (firstField) {
+            firstField.focus();
+            firstField.select();
+        }
+        showToast("Edit mode enabled. Fields are now editable.", "info");
+    }
+}
+
+function cancelProfileEdit() {
+    // Discard any unsaved changes by resetting fields from state.currentUser
+    state.isProfileEditing = false;
+    populateProfileForm(false);
+
+    const alertBox = document.getElementById("profile-alert-box");
+    if (alertBox) alertBox.style.display = "none";
+
+    document.querySelectorAll("#form-edit-profile .has-error").forEach(el => el.classList.remove("has-error"));
+    showToast("Editing cancelled. Unsaved changes discarded.", "info");
+}
+
+function populateProfileForm(isEditing = false) {
     if (!state.currentUser) return;
     const u = state.currentUser;
+
+    // 1. Update Hero Persona Summary Card
+    const heroAvatar = document.getElementById("prof-hero-avatar");
+    if (heroAvatar) heroAvatar.textContent = (u.full_name || "C")[0].toUpperCase();
+
+    const heroName = document.getElementById("prof-hero-name");
+    if (heroName) heroName.textContent = u.full_name || "Citizen";
+
+    const heroUser = document.getElementById("prof-hero-username");
+    if (heroUser) heroUser.textContent = `@${u.username || 'citizen'}`;
+
+    const heroOcc = document.getElementById("prof-hero-occ");
+    if (heroOcc) heroOcc.textContent = u.occupation || "Citizen";
+
+    const heroInc = document.getElementById("prof-hero-inc");
+    if (heroInc) heroInc.textContent = `₹${(u.annual_income || 0).toLocaleString('en-IN')}/yr`;
+
+    const heroLoc = document.getElementById("prof-hero-loc");
+    if (heroLoc) heroLoc.textContent = `${u.district || 'Jaipur'}, ${u.state || 'Rajasthan'}`;
+
+    const heroCat = document.getElementById("prof-hero-cat");
+    if (heroCat) heroCat.textContent = `${u.social_category || 'General'}${u.is_bpl ? ' • BPL' : ''}`;
+
+    // 2. Helper to set form values
     const setVal = (id, val) => {
         const el = document.getElementById(id);
-        if (el) el.value = val !== undefined ? val : "";
+        if (el) el.value = val !== undefined && val !== null ? val : "";
     };
 
+    // Personal Details
     setVal("prof-name", u.full_name);
+    setVal("prof-email", u.email || "");
+    setVal("prof-phone", u.phone || "");
+
+    // Demographic Details
     setVal("prof-age", u.age || 35);
     setVal("prof-gender", u.gender || "Male");
-    setVal("prof-occupation", u.occupation || "Worker");
-    setVal("prof-income", u.annual_income || 120000);
     setVal("prof-category", u.social_category || "General");
-    setVal("prof-residence", u.residence_area || "Urban");
-    setVal("prof-land", u.land_ownership_hectares || 0.0);
-    setVal("prof-location", `${u.district || 'Jaipur'}, ${u.state || 'Rajasthan'}`);
+    setVal("prof-marital", u.marital_status || "Married");
+    setVal("prof-pwd", u.is_differently_abled ? "1" : "0");
+    setVal("prof-family-count", u.family_members_count || 4);
 
+    // Occupational Details
+    setVal("prof-occupation", u.occupation || "");
+    setVal("prof-land", u.land_ownership_hectares !== undefined ? u.land_ownership_hectares : 0.0);
+
+    // Financial Details
+    setVal("prof-income", u.annual_income !== undefined ? u.annual_income : 120000);
     const bplEl = document.getElementById("prof-bpl");
     if (bplEl) bplEl.checked = !!u.is_bpl;
+
+    // Residential Details
+    setVal("prof-residence", u.residence_area || "Urban");
+    setVal("prof-state", u.state || "Rajasthan");
+    setVal("prof-district", u.district || "Jaipur");
+
+    // 3. Toggle Disabled state on all form controls
+    const fieldIds = [
+        "prof-name", "prof-email", "prof-phone",
+        "prof-age", "prof-gender", "prof-category", "prof-marital", "prof-pwd", "prof-family-count",
+        "prof-occupation", "prof-land",
+        "prof-income", "prof-bpl",
+        "prof-residence", "prof-state", "prof-district"
+    ];
+
+    fieldIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.disabled = !isEditing;
+        }
+    });
+
+    // 4. Update Form CSS Class
+    const formEl = document.getElementById("form-edit-profile");
+    if (formEl) {
+        if (isEditing) {
+            formEl.classList.remove("is-readonly");
+            formEl.classList.add("is-editing");
+        } else {
+            formEl.classList.remove("is-editing");
+            formEl.classList.add("is-readonly");
+        }
+    }
+
+    // 5. Toggle Header & Bottom Action Controls
+    const badgeReadonly = document.getElementById("profile-badge-readonly");
+    const badgeEditing = document.getElementById("profile-badge-editing");
+    const btnEdit = document.getElementById("btn-edit-profile");
+    const editActions = document.getElementById("profile-edit-actions");
+
+    const btnBottomEdit = document.getElementById("btn-bottom-edit");
+    const bottomEditGroup = document.getElementById("profile-bottom-edit-group");
+    const modeNotice = document.getElementById("profile-mode-notice");
+
+    if (badgeReadonly) badgeReadonly.style.display = isEditing ? "none" : "inline-flex";
+    if (badgeEditing) badgeEditing.style.display = isEditing ? "inline-flex" : "none";
+    if (btnEdit) btnEdit.style.display = isEditing ? "none" : "inline-flex";
+    if (editActions) editActions.style.display = isEditing ? "inline-flex" : "none";
+
+    if (btnBottomEdit) btnBottomEdit.style.display = isEditing ? "none" : "inline-flex";
+    if (bottomEditGroup) bottomEditGroup.style.display = isEditing ? "inline-flex" : "none";
+
+    if (modeNotice) {
+        if (isEditing) {
+            modeNotice.innerHTML = `<i class="fa-solid fa-pen-to-square"></i> <span>You are in <strong>Edit Mode</strong>. Review your changes carefully and click <strong>Save Changes</strong> or <strong>Cancel</strong>.</span>`;
+        } else {
+            modeNotice.innerHTML = `<i class="fa-solid fa-circle-info"></i> <span>This profile is in <strong>Read-Only Mode</strong>. Click <strong>Edit Profile</strong> to modify your details.</span>`;
+        }
+    }
+}
+
+function showProfileAlert(message, type = "danger") {
+    const alertBox = document.getElementById("profile-alert-box");
+    if (!alertBox) return;
+
+    let icon = "fa-circle-exclamation";
+    if (type === "success") icon = "fa-circle-check";
+    if (type === "info") icon = "fa-circle-info";
+
+    alertBox.className = `profile-alert alert-${type}`;
+    alertBox.innerHTML = `
+        <i class="fa-solid ${icon}"></i>
+        <div style="flex: 1;">${escapeHtml(message)}</div>
+        <button type="button" class="btn-close-alert" onclick="this.parentElement.style.display='none'" style="background:none; border:none; color:inherit; cursor:pointer; font-size:18px; line-height:1;">&times;</button>
+    `;
+    alertBox.style.display = "flex";
+    alertBox.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+function validateProfileForm(payload) {
+    // Clear old error highlights
+    document.querySelectorAll("#form-edit-profile .has-error").forEach(el => el.classList.remove("has-error"));
+
+    // 1. Full name validation
+    if (!payload.full_name || payload.full_name.trim().length < 2) {
+        return { isValid: false, message: "Full Name is required (minimum 2 characters).", fieldId: "prof-name" };
+    }
+
+    // 2. Email validation (if filled)
+    if (payload.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.email)) {
+        return { isValid: false, message: "Please enter a valid email address.", fieldId: "prof-email" };
+    }
+
+    // 3. Phone validation (if filled)
+    if (payload.phone && !/^[0-9+\-\s]{8,15}$/.test(payload.phone)) {
+        return { isValid: false, message: "Please enter a valid phone number (at least 8 digits).", fieldId: "prof-phone" };
+    }
+
+    // 4. Age validation
+    if (isNaN(payload.age) || payload.age < 1 || payload.age > 120) {
+        return { isValid: false, message: "Age must be a valid number between 1 and 120 years.", fieldId: "prof-age" };
+    }
+
+    // 5. Occupation validation
+    if (!payload.occupation || payload.occupation.trim().length === 0) {
+        return { isValid: false, message: "Occupation / Trade is required for welfare scheme evaluation.", fieldId: "prof-occupation" };
+    }
+
+    // 6. Annual income validation
+    if (isNaN(payload.annual_income) || payload.annual_income < 0) {
+        return { isValid: false, message: "Annual income must be a non-negative number.", fieldId: "prof-income" };
+    }
+
+    // 7. Agricultural land validation
+    if (isNaN(payload.land_ownership_hectares) || payload.land_ownership_hectares < 0) {
+        return { isValid: false, message: "Agricultural land ownership must be 0 or greater.", fieldId: "prof-land" };
+    }
+
+    // 8. Family members count validation
+    if (isNaN(payload.family_members_count) || payload.family_members_count < 1) {
+        return { isValid: false, message: "Family members count must be at least 1.", fieldId: "prof-family-count" };
+    }
+
+    // 9. State & District validation
+    if (!payload.state || payload.state.trim().length === 0) {
+        return { isValid: false, message: "State of residence is required.", fieldId: "prof-state" };
+    }
+    if (!payload.district || payload.district.trim().length === 0) {
+        return { isValid: false, message: "District is required.", fieldId: "prof-district" };
+    }
+
+    return { isValid: true };
 }
 
 async function handleProfileSave(event) {
     event.preventDefault();
+
     const payload = {
+        full_name: document.getElementById("prof-name").value.trim(),
+        email: document.getElementById("prof-email").value.trim(),
+        phone: document.getElementById("prof-phone").value.trim(),
         age: parseInt(document.getElementById("prof-age").value),
         gender: document.getElementById("prof-gender").value,
-        occupation: document.getElementById("prof-occupation").value,
-        annual_income: parseFloat(document.getElementById("prof-income").value),
         social_category: document.getElementById("prof-category").value,
+        marital_status: document.getElementById("prof-marital").value,
+        is_differently_abled: document.getElementById("prof-pwd").value === "1",
+        family_members_count: parseInt(document.getElementById("prof-family-count").value) || 4,
+        occupation: document.getElementById("prof-occupation").value.trim(),
+        land_ownership_hectares: parseFloat(document.getElementById("prof-land").value) || 0.0,
+        annual_income: parseFloat(document.getElementById("prof-income").value),
+        is_bpl: document.getElementById("prof-bpl").checked,
         residence_area: document.getElementById("prof-residence").value,
-        land_ownership_hectares: parseFloat(document.getElementById("prof-land").value),
-        is_bpl: document.getElementById("prof-bpl").checked
+        state: document.getElementById("prof-state").value.trim(),
+        district: document.getElementById("prof-district").value.trim()
     };
+
+    // Client-side Validation before sending
+    const validation = validateProfileForm(payload);
+    if (!validation.isValid) {
+        const errorInput = document.getElementById(validation.fieldId);
+        if (errorInput) {
+            errorInput.classList.add("has-error");
+            errorInput.focus();
+        }
+        showProfileAlert(validation.message, "danger");
+        showToast(validation.message, "error");
+        return;
+    }
+
+    // Set buttons to saving state
+    const saveBtn = document.getElementById("btn-save-profile");
+    const bottomSaveBtn = document.getElementById("btn-bottom-save");
+    if (saveBtn) saveBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> <span>Saving...</span>`;
+    if (bottomSaveBtn) bottomSaveBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Saving...`;
 
     try {
         const res = await fetch(`/api/users/${state.activeUserId}/profile`, {
@@ -1961,18 +2702,52 @@ async function handleProfileSave(event) {
             body: JSON.stringify(payload)
         });
         const data = await res.json();
+
         if (res.ok && data.user) {
-            setAuthenticatedUser(data.user);
+            // Update state and persistence
+            state.currentUser = data.user;
+            localStorage.setItem("jansetu_user", JSON.stringify(data.user));
+            localStorage.setItem("sahayak_user", JSON.stringify(data.user));
+
+            // Sync allUsers array
+            const userIndex = state.allUsers.findIndex(u => u.id === data.user.id);
+            if (userIndex !== -1) {
+                state.allUsers[userIndex] = data.user;
+            }
+
+            // Invalidate stale eligibility audit in workflow state so re-assessment uses fresh profile
+            if (state.workflowStage >= 3) {
+                state.eligibilityAssessment = null;
+            }
+
+            // Update global UI sections: Topbar, Dashboard, Metrics
+            updateTopBarProfile();
+            updateDashboardBanner();
+            updateDashboardMetrics();
+
+            // Return to read-only view
+            setProfileEditMode(false);
+
+            showProfileAlert("Profile updated and saved to database successfully! Your AI Workforce eligibility checks have been updated.", "success");
             showToast("Citizen profile saved successfully!", "success");
+        } else {
+            const errDetail = data.detail || "Server error while updating profile.";
+            showProfileAlert(errDetail, "danger");
+            showToast(errDetail, "error");
         }
     } catch (err) {
         console.error("Failed to save profile:", err);
-        showToast("Error updating profile.", "error");
+        showProfileAlert("Network or server connection error. Please try again.", "danger");
+        showToast("Error updating profile. Check server connection.", "error");
+    } finally {
+        if (saveBtn) saveBtn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> <span>Save Changes</span>`;
+        if (bottomSaveBtn) bottomSaveBtn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Save Changes`;
     }
 }
 
+
 // ==============================================================
-// Secondary Chatbot: Sahayak Mitra Drawer
+// Secondary Chatbot: JanSetu Mitra Drawer
 // ==============================================================
 
 function toggleChatbot(show) {
@@ -2006,7 +2781,8 @@ async function handleSendChatMessage(event) {
             body: JSON.stringify({
                 session_id: state.chatSessionId,
                 user_id: state.activeUserId,
-                message: msg
+                message: msg,
+                language: state.currentLang || "en"
             })
         });
 
@@ -2014,13 +2790,57 @@ async function handleSendChatMessage(event) {
         const replyText = data.reply || data.response;
         if (res.ok && replyText) {
             appendChatMessage("bot", replyText);
+            if (data.suggested_prompts && Array.isArray(data.suggested_prompts)) {
+                renderMitraDrawerSuggestions(data.suggested_prompts);
+            }
         } else {
-            appendChatMessage("bot", "I am having trouble connecting right now. Please explore schemes in the Scheme Directory.");
+            appendChatMessage("bot", t("mitra_error", "I am having trouble connecting right now. Please explore schemes in the Scheme Directory."));
         }
+
     } catch (err) {
         console.error("Chat error:", err);
         appendChatMessage("bot", "Backend service offline. Please try again later.");
     }
+}
+
+function formatChatMarkdown(text) {
+    if (!text) return "";
+    let safe = text.replace(/\r\n/g, "\n");
+    safe = escapeHtml(safe);
+
+    // Convert ### or ## or Scheme: into a sleek scheme badge card
+    safe = safe.replace(/^(?:#{1,4}\s*|Scheme:\s*)(.*?)$/gm, (match, title) => {
+        const cleanTitle = title.replace(/\*\*/g, "").replace(/\*/g, "").trim();
+        return `<div class="chat-scheme-badge"><i class="fa-solid fa-award"></i> <span>${cleanTitle}</span></div>`;
+    });
+
+    // Bold tags: **bold** -> <strong>bold</strong>
+    safe = safe.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+
+    // Remove any remaining stray markdown asterisks or hashes
+    safe = safe.replace(/\*{1,3}/g, "");
+    safe = safe.replace(/#{1,6}\s*/g, "");
+
+    // Structured section headers
+    safe = safe.replace(/^(Related Welfare Initiatives:|Mandatory Documents Checklist:|Eligibility Requirements:|Key Benefits:|Next Steps:|Checklist Guidance:|Application procedure:)\s*$/gm,
+        '<div class="chat-section-header">$1</div>');
+
+    // Bullet points: • or -
+    safe = safe.replace(/^[•\-\*]\s*(.*?)$/gm, `
+        <div class="chat-bullet-row">
+            <span class="chat-bullet-dot">•</span>
+            <span class="chat-bullet-text">$1</span>
+        </div>
+    `);
+
+    // Official portal URLs
+    safe = safe.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener" class="chat-portal-link"><i class="fa-solid fa-arrow-up-right-from-square"></i> $1</a>');
+
+    // Spacing & line breaks
+    safe = safe.replace(/\n\n+/g, "<div class='chat-spacer'></div>");
+    safe = safe.replace(/\n/g, "<br>");
+
+    return safe;
 }
 
 function appendChatMessage(sender, text) {
@@ -2029,9 +2849,10 @@ function appendChatMessage(sender, text) {
 
     const div = document.createElement("div");
     div.className = `chat-bubble ${sender}-message`;
+    const formattedContent = sender === 'bot' ? formatChatMarkdown(text) : escapeHtml(text).replace(/\n/g, '<br>');
     div.innerHTML = `
-        <div class="msg-author">${sender === 'user' ? 'You' : '<i class="fa-solid fa-robot"></i> Sahayak Mitra'}</div>
-        <div class="msg-content">${escapeHtml(text).replace(/\n/g, '<br>')}</div>
+        <div class="msg-author">${sender === 'user' ? 'You' : '<i class="fa-solid fa-robot"></i> JanSetu Mitra'}</div>
+        <div class="msg-content">${formattedContent}</div>
     `;
     container.appendChild(div);
     container.scrollTop = container.scrollHeight;

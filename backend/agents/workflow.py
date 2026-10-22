@@ -81,7 +81,7 @@ Citizen's Plain Language Query:
     # Fallback search query if LLM did not return one
     semantic_query = intake_data.get("semantic_search_query")
     if not semantic_query or len(semantic_query) < 5:
-        semantic_query = f"{profile.get('occupation', '')} {query} {profile.get('residence_area', '')} financial assistance"
+        semantic_query = f"{query} financial assistance subsidy grant".strip()
         intake_data["semantic_search_query"] = semantic_query
 
     return {"intake_result": intake_data}
@@ -101,17 +101,28 @@ def scheme_matcher_agent(state: WorkflowState) -> Dict[str, Any]:
     # Semantic search with Qdrant - retrieve up to 7 candidates
     candidates = search_schemes(query, limit=7)
 
-    # If fewer than 6 candidates found, supplement with occupational / category search
+    # If fewer than 6 candidates found, supplement with user query / identified category
     if len(candidates) < 6:
-        supp = search_schemes(profile.get("occupation", "citizen welfare assistance"), limit=7)
+        category_hint = intake.get("identified_category") or ""
+        supp_query = f"{state.get('user_query', '')} {category_hint} welfare scheme financial assistance".strip()
+        supp = search_schemes(supp_query, limit=7)
         for s in supp:
-            if not any(c["scheme_id"] == s["scheme_id"] for c in candidates):
+            sid = s.get("id") or s.get("scheme_id")
+            s["id"] = sid
+            s["scheme_id"] = sid
+            if not any((c.get("id") == sid or c.get("scheme_id") == sid) for c in candidates):
                 candidates.append(s)
             if len(candidates) >= 7:
                 break
 
+    # Normalize id and scheme_id across all candidates
+    for c in candidates:
+        sid = c.get("id") or c.get("scheme_id")
+        c["id"] = sid
+        c["scheme_id"] = sid
+
     system_prompt = """
-You are the Scheme Matcher Agent for Sahayak.
+You are the Scheme Matcher Agent for JanSetu.
 Given a citizen's profile and top candidate government schemes from semantic search,
 evaluate each candidate and select the top 2-3 best matching schemes.
 For each recommended scheme, generate:
@@ -169,25 +180,31 @@ Candidate Schemes:
         if scheme_id and scheme_id not in seen_ids:
             full_scheme = get_scheme_by_id(scheme_id)
             if full_scheme:
+                sid = full_scheme.get("id") or full_scheme.get("scheme_id")
+                full_scheme["id"] = sid
+                full_scheme["scheme_id"] = sid
                 full_scheme["is_recommended"] = True
                 full_scheme["match_score"] = r.get("match_score", 92)
                 full_scheme["match_percentage"] = f"{int(r.get('match_score', 92))}%"
                 full_scheme["match_rationale"] = r.get("match_rationale", "Strong match for your citizen profile and stated requirements.")
                 full_scheme["key_highlight"] = r.get("key_highlight", full_scheme.get("benefits", "")[:90])
                 final_recs.append(full_scheme)
-                seen_ids.add(scheme_id)
+                seen_ids.add(sid)
 
-    # Ensure at least 2 recommended schemes
+    # Ensure at least 2 recommended schemes from top candidates
     if len(final_recs) < 2 and candidates:
         for c in candidates:
-            if c["scheme_id"] not in seen_ids:
+            cid = c.get("id") or c.get("scheme_id")
+            if cid not in seen_ids:
+                c["id"] = cid
+                c["scheme_id"] = cid
                 c["is_recommended"] = True
                 c["match_score"] = c.get("match_score", 85)
                 c["match_percentage"] = f"{int(c.get('match_score', 85))}%"
                 c["match_rationale"] = "Strong candidate identified from semantic alignment with your profile category."
                 c["key_highlight"] = c.get("benefits", "")[:90]
                 final_recs.append(c)
-                seen_ids.add(c["scheme_id"])
+                seen_ids.add(cid)
                 if len(final_recs) >= 3:
                     break
 
@@ -198,15 +215,18 @@ Candidate Schemes:
         all_results.append(r)
 
     for c in candidates:
-        if c["scheme_id"] not in seen_ids:
-            full = get_scheme_by_id(c["scheme_id"]) or c
+        cid = c.get("id") or c.get("scheme_id")
+        if cid not in seen_ids:
+            full = get_scheme_by_id(cid) or c
+            full["id"] = cid
+            full["scheme_id"] = cid
             full["is_recommended"] = False
             full["match_score"] = c.get("match_score", 72)
             full["match_percentage"] = f"{int(c.get('match_score', 72))}%"
             full["match_rationale"] = "Relevant welfare scheme matching your sector and geographic applicability."
             full["key_highlight"] = full.get("benefits", "")[:90]
             all_results.append(full)
-            seen_ids.add(c["scheme_id"])
+            seen_ids.add(cid)
             if len(all_results) >= 7:
                 break
 
@@ -231,16 +251,20 @@ def eligibility_assessor_agent(state: WorkflowState) -> Dict[str, Any]:
     if not scheme:
         return {"error": "No scheme selected for eligibility assessment."}
 
+    user_id = state.get("user_id") or profile.get("id") or 1
+    user_docs = get_user_documents(user_id)
+    doc_summary = [f"{d.get('doc_name')} (Type: {d.get('doc_type')}, Status: {d.get('status')})" for d in user_docs]
+
     criteria = scheme.get("eligibility_criteria", {})
     key_rules = criteria.get("key_rules", [])
 
     system_prompt = """
 You are the Eligibility Assessor Agent for JanSetu.
-You must compare the citizen's profile with the scheme's statutory eligibility criteria.
+You must compare the citizen's profile and any uploaded supporting documents with the scheme's statutory eligibility criteria.
 Evaluate each criterion and categorize as:
-- 'PASSED': Profile meets criterion (e.g. age, income ceiling, occupation, location)
-- 'FAILED': Profile definitively violates rule
-- 'SELF_DECLARATION': Requires citizen's personal affirmation (e.g. 'I do not have a pucca house' or 'I have no active bank default')
+- 'PASSED': Profile meets criterion (e.g. age, income ceiling, occupation, location) or is substantiated by an uploaded supporting document.
+- 'FAILED': Profile definitively violates rule without waiver.
+- 'SELF_DECLARATION': Requires citizen's personal affirmation (e.g. 'I do not have a pucca house' or 'I have no active bank default').
 
 Provide response in JSON:
 {
@@ -277,6 +301,7 @@ Citizen Facts:
 - Social Category: {profile.get('social_category')}
 - Residence Area: {profile.get('residence_area')}
 - BPL: {profile.get('is_bpl')}
+- Uploaded Supporting Documents in Locker: {", ".join(doc_summary) if doc_summary else "No documents uploaded yet"}
 """
 
     assessment = invoke_llm_json(user_prompt, system_prompt)
@@ -284,6 +309,10 @@ Citizen Facts:
     # Deterministic safety backup if rules_audit is empty
     if not assessment.get("rules_audit"):
         audit_items = []
+        has_income_doc = any("income" in (d.get("doc_type", "") + d.get("doc_name", "")).lower() for d in user_docs)
+        has_land_doc = any("land" in (d.get("doc_type", "") + d.get("doc_name", "")).lower() for d in user_docs)
+        has_vending_doc = any(("vending" in d.get("doc_type", "").lower() or "trade" in d.get("doc_name", "").lower()) for d in user_docs)
+
         # Age check
         min_age = criteria.get("min_age", 18)
         max_age = criteria.get("max_age", 75)
@@ -300,30 +329,58 @@ Citizen Facts:
         # Income check
         max_income = criteria.get("max_annual_income", 300000)
         user_income = profile.get("annual_income", 120000)
-        income_passed = user_income <= max_income if max_income else True
+        income_passed = (user_income <= max_income if max_income else True) or has_income_doc
+        income_fact = f"Citizen annual income is Rs {user_income:,}"
+        if has_income_doc:
+            income_fact += " (Substantiated by uploaded Income Proof)"
         audit_items.append({
             "id": 2,
             "rule_text": f"Annual household income ceiling of Rs {max_income:,}" if max_income else "No strict income limit",
             "status": "PASSED" if income_passed else "FAILED",
-            "citizen_fact": f"Citizen annual income is Rs {user_income:,}",
-            "explanation": "Income is within ceiling." if income_passed else "Exceeds income limit."
+            "citizen_fact": income_fact,
+            "explanation": "Income criteria verified and substantiated." if income_passed else "Exceeds income limit."
         })
+
+        # Land check if applicable
+        if "land" in json.dumps(criteria).lower():
+            land_val = profile.get("land_ownership_hectares", 0)
+            land_fact = f"{land_val} hectares"
+            if has_land_doc:
+                land_fact += " (Substantiated by uploaded Land Records / Khatauni)"
+            audit_items.append({
+                "id": 3,
+                "rule_text": "Landholding ownership verification",
+                "status": "PASSED" if (land_val > 0 or has_land_doc) else "SELF_DECLARATION",
+                "citizen_fact": land_fact,
+                "explanation": "Landholding substantiated by records." if has_land_doc else "Self-declaration acceptable."
+            })
 
         # Key rules as self-declarations
         actionable_declarations = []
-        for i, rule in enumerate(key_rules[:3], start=3):
+        for i, rule in enumerate(key_rules[:3], start=4):
+            # If user uploaded documents for this rule, pass it
+            rule_lower = rule.lower()
+            is_substantiated = False
+            if "income" in rule_lower and has_income_doc:
+                is_substantiated = True
+            elif "land" in rule_lower and has_land_doc:
+                is_substantiated = True
+            elif ("trade" in rule_lower or "vendor" in rule_lower) and has_vending_doc:
+                is_substantiated = True
+
             audit_items.append({
                 "id": i,
                 "rule_text": rule,
-                "status": "SELF_DECLARATION",
-                "citizen_fact": "Self-attested statement required",
-                "explanation": "Please review and confirm this statement."
+                "status": "PASSED" if is_substantiated else "SELF_DECLARATION",
+                "citizen_fact": "Substantiated by uploaded document in locker" if is_substantiated else "Self-attested statement required",
+                "explanation": "Document verified in locker." if is_substantiated else "Please review and confirm this statement."
             })
-            actionable_declarations.append(rule)
+            if not is_substantiated:
+                actionable_declarations.append(rule)
 
         assessment = {
             "verdict": "ELIGIBLE" if (age_passed and income_passed) else "CONDITIONALLY_ELIGIBLE",
-            "score": 94 if (age_passed and income_passed) else 65,
+            "score": 96 if (age_passed and income_passed) else 75,
             "summary": "You satisfy the primary demographic and economic qualifications for this welfare initiative.",
             "rules_audit": audit_items,
             "actionable_declarations": actionable_declarations or ["I confirm that the details provided are accurate."]
@@ -399,7 +456,7 @@ def document_readiness_agent(state: WorkflowState) -> Dict[str, Any]:
     if not scheme and state.get("selected_scheme_id"):
         scheme = get_scheme_by_id(state["selected_scheme_id"])
 
-    user_id = state.get("user_id", 1)
+    user_id = state.get("user_id") or state.get("user_profile", {}).get("id") or 1
     user_docs = get_user_documents(user_id)
 
     required_docs = scheme.get("required_documents", []) if scheme else []

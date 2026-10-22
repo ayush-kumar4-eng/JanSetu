@@ -31,22 +31,22 @@ router = APIRouter(prefix="/api/workflow", tags=["Agentic Workflow"])
 # ==========================================
 
 class IntakeMatchRequest(BaseModel):
-    user_id: int
-    user_query: str = Field(..., min_length=3, description="Citizen's stated need in plain language")
+    user_id: Optional[int] = 1
+    user_query: str = Field(..., min_length=2, description="Citizen's stated need in plain language")
 
 
 class AuditEligibilityRequest(BaseModel):
-    user_id: int
+    user_id: Optional[int] = 1
     scheme_id: int
 
 
 class AuditDocumentsRequest(BaseModel):
-    user_id: int
+    user_id: Optional[int] = 1
     scheme_id: int
 
 
 class GenerateDraftRequest(BaseModel):
-    user_id: int
+    user_id: Optional[int] = 1
     scheme_id: int
     user_query: Optional[str] = "Welfare assistance"
     confirmed_criteria: Optional[List[str]] = []

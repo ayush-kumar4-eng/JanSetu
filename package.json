@@ -1,0 +1,13 @@
+{
+  "name": "jansetu",
+  "version": "1.0.0",
+  "description": "JanSetu — Agentic AI Workforce for Government Scheme Navigation",
+  "scripts": {
+    "dev": "python backend/main.py",
+    "start": "python backend/main.py",
+    "init-db": "python database/init_db.py"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
