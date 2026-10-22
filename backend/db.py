@@ -263,21 +263,38 @@ def get_user_documents(user_id: int) -> List[Dict[str, Any]]:
         return docs
 
 
+def get_document_by_id(doc_id: int) -> Optional[Dict[str, Any]]:
+    """Retrieves a single document by its primary key ID."""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM user_documents WHERE id = ?", (doc_id,))
+        row = cursor.fetchone()
+        if not row:
+            return None
+        d = dict(row)
+        try:
+            d["verified_ocr_data"] = json.loads(d.get("verified_ocr_data_json", "{}"))
+        except Exception:
+            d["verified_ocr_data"] = {}
+        return d
+
+
 def add_user_document(
     user_id: int,
     doc_type: str,
     doc_name: str,
     ocr_data: Dict[str, Any],
     file_path: str = "",
-    status: str = "VERIFIED_DEMO"
+    status: str = "VERIFIED_DEMO",
+    file_size: int = 1024
 ) -> Dict[str, Any]:
-    """Adds a new document record for a citizen with the given status."""
+    """Adds a new demo or uploaded document record for a citizen."""
     with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("""
-            INSERT INTO user_documents (user_id, doc_type, doc_name, file_path, status, verified_ocr_data_json)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (user_id, doc_type, doc_name, file_path, status, json.dumps(ocr_data)))
+            INSERT INTO user_documents (user_id, doc_type, doc_name, file_path, file_size, status, verified_ocr_data_json)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (user_id, doc_type, doc_name, file_path, file_size, status, json.dumps(ocr_data)))
         doc_id = cursor.lastrowid
         conn.commit()
         return {
@@ -285,22 +302,31 @@ def add_user_document(
             "user_id": user_id,
             "doc_type": doc_type,
             "doc_name": doc_name,
-            "status": status,
-            "verified_ocr_data": ocr_data,
             "file_path": file_path,
-            "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            "file_size": file_size,
+            "status": status,
+            "verified_ocr_data": ocr_data
         }
 
 
-def delete_user_document(doc_id: int, user_id: int) -> bool:
-    """Deletes a specific document belonging to a user. Returns True if deleted."""
+def delete_user_document(doc_id: int, user_id: Optional[int] = None) -> Optional[str]:
+    """Deletes a document record. Returns file_path if document was found and deleted, or None."""
     with get_db_connection() as conn:
         cursor = conn.cursor()
-        cursor.execute("""
-            DELETE FROM user_documents WHERE id = ? AND user_id = ?
-        """, (doc_id, user_id))
+        if user_id is not None:
+            cursor.execute("SELECT file_path FROM user_documents WHERE id = ? AND user_id = ?", (doc_id, user_id))
+        else:
+            cursor.execute("SELECT file_path FROM user_documents WHERE id = ?", (doc_id,))
+        row = cursor.fetchone()
+        if not row:
+            return None
+        file_path = row["file_path"] or ""
+        if user_id is not None:
+            cursor.execute("DELETE FROM user_documents WHERE id = ? AND user_id = ?", (doc_id, user_id))
+        else:
+            cursor.execute("DELETE FROM user_documents WHERE id = ?", (doc_id,))
         conn.commit()
-        return cursor.rowcount > 0
+        return file_path
 
 
 # ==========================================

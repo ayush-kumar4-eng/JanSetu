@@ -4,19 +4,29 @@ Handles document uploads (real file storage), demo auto-generation, viewing, and
 """
 
 import os
+import uuid
+import mimetypes
 import random
-import shutil
-from pathlib import Path
+from datetime import datetime
 from typing import Optional
-from fastapi import APIRouter, HTTPException, UploadFile, File, Form
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Query
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
-from backend.db import get_user_documents, add_user_document, get_user_by_id, delete_user_document
-from backend.config import UPLOADS_DIR
+from backend.db import (
+    get_user_documents,
+    add_user_document,
+    get_user_by_id,
+    get_document_by_id,
+    delete_user_document
+)
+from backend.config import UPLOADS_DIR, PROJECT_ROOT
 
 router = APIRouter(prefix="/api/documents", tags=["Documents"])
 
 ALLOWED_EXTENSIONS = {".pdf", ".jpg", ".jpeg", ".png"}
+
+ALLOWED_EXTENSIONS = {".pdf", ".jpg", ".jpeg", ".png"}
+MAX_FILE_SIZE_BYTES = 15 * 1024 * 1024  # 15 MB
 
 
 class GenerateDemoDocRequest(BaseModel):
@@ -27,12 +37,214 @@ class GenerateDemoDocRequest(BaseModel):
 
 @router.get("/user/{user_id}")
 def list_documents(user_id: int):
-    """Returns all documents for a citizen."""
+    """Returns all demo and uploaded documents for a citizen."""
     user = get_user_by_id(user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     docs = get_user_documents(user_id)
     return {"user_id": user_id, "count": len(docs), "documents": docs}
+
+
+@router.get("/{doc_id}")
+def get_single_document(doc_id: int):
+    """Retrieves document record metadata by ID."""
+    doc = get_document_by_id(doc_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    return {"document": doc}
+
+
+@router.get("/{doc_id}/file")
+def view_document_file(doc_id: int, download: bool = Query(False)):
+    """
+    Safely opens or previews an uploaded document, or downloads it.
+    If it's a demo generated document without a stored physical file, returns document metadata JSON.
+    """
+    doc = get_document_by_id(doc_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    file_path = doc.get("file_path") or ""
+    if not file_path:
+        # Demo document without disk file
+        return JSONResponse(
+            status_code=200,
+            content={
+                "is_demo_generated": True,
+                "message": "Demo document with simulated OCR metadata. No binary file stored.",
+                "document": doc
+            }
+        )
+
+    # Resolve actual filesystem path
+    candidate_paths = [
+        UPLOADS_DIR / os.path.basename(file_path),
+        PROJECT_ROOT / file_path,
+        PROJECT_ROOT / "backend" / file_path,
+        PROJECT_ROOT / "database" / file_path
+    ]
+    resolved_path = None
+    for p in candidate_paths:
+        if p.exists() and p.is_file():
+            resolved_path = p
+            break
+
+    if not resolved_path:
+        # File path in DB but file missing from disk
+        return JSONResponse(
+            status_code=200,
+            content={
+                "is_demo_generated": True,
+                "message": "Physical file record not found on disk; rendering simulated proof.",
+                "document": doc
+            }
+        )
+
+    mime_type, _ = mimetypes.guess_type(str(resolved_path))
+    if not mime_type:
+        mime_type = "application/octet-stream"
+
+    filename = os.path.basename(file_path)
+    disposition = "attachment" if download else "inline"
+
+    return FileResponse(
+        path=str(resolved_path),
+        media_type=mime_type,
+        headers={
+            "Content-Disposition": f'{disposition}; filename="{filename}"'
+        }
+    )
+
+
+@router.get("/{doc_id}/download")
+def download_document_file(doc_id: int):
+    """Downloads the document file."""
+    return view_document_file(doc_id, download=True)
+
+
+@router.delete("/{doc_id}")
+def delete_document(doc_id: int, user_id: Optional[int] = Query(None)):
+    """
+    Deletes an uploaded or demo document by ID.
+    Unlinks associated physical file from storage if present.
+    """
+    doc = get_document_by_id(doc_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    if user_id is not None and doc.get("user_id") != user_id:
+        raise HTTPException(status_code=403, detail="Unauthorized to delete this document")
+
+    file_path = delete_user_document(doc_id, user_id=user_id)
+
+    # Safely remove physical file if stored
+    if file_path:
+        for candidate in [
+            UPLOADS_DIR / os.path.basename(file_path),
+            PROJECT_ROOT / file_path
+        ]:
+            try:
+                if candidate.exists() and candidate.is_file():
+                    os.remove(candidate)
+                    break
+            except Exception:
+                pass
+
+    return {
+        "success": True,
+        "message": f"Document '{doc.get('doc_name', 'Document')}' deleted successfully.",
+        "deleted_id": doc_id
+    }
+
+
+@router.post("/upload")
+async def upload_document(
+    user_id: int = Form(...),
+    doc_type: str = Form(...),
+    doc_name: Optional[str] = Form(None),
+    file: UploadFile = File(...)
+):
+    """
+    Accepts document file upload (PDF, JPG, JPEG, PNG), persists file to disk,
+    records status as UPLOADED (Pending Verification), and returns the saved document record.
+    """
+    user = get_user_by_id(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    original_filename = file.filename or "uploaded_document"
+    ext = os.path.splitext(original_filename)[1].lower()
+
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid file format '{ext}'. Only PDF, JPG, JPEG, and PNG files are supported."
+        )
+
+    # Read content and validate size
+    try:
+        content = await file.read()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to read uploaded file: {str(e)}")
+
+    file_size = len(content)
+    if file_size > MAX_FILE_SIZE_BYTES:
+        raise HTTPException(
+            status_code=400,
+            detail="File size exceeds maximum limit of 15MB. Please upload a smaller file."
+        )
+
+    # Ensure uploads directory exists
+    UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Generate unique safe filename
+    safe_basename = "".join(c for c in os.path.basename(original_filename) if c.isalnum() or c in "._- ")
+    unique_filename = f"doc_{uuid.uuid4().hex[:8]}_{safe_basename}"
+    save_path = UPLOADS_DIR / unique_filename
+
+    try:
+        with open(save_path, "wb") as f:
+            f.write(content)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save document to storage: {str(e)}")
+
+    # Display name determination
+    clean_name = (doc_name or "").strip()
+    if not clean_name:
+        category_label = doc_type.replace('_', ' ').title()
+        clean_name = f"{category_label} ({original_filename})"
+
+    # Prepare OCR / verification metadata
+    # NOTE: Uploading a file does NOT mark it as verified automatically.
+    # Verification status reflects the actual status (Pending Verification).
+    ocr_metadata = {
+        "file_name": original_filename,
+        "saved_filename": unique_filename,
+        "content_type": file.content_type or mimetypes.guess_type(original_filename)[0] or "application/octet-stream",
+        "file_size_bytes": file_size,
+        "file_size_formatted": f"{round(file_size / 1024, 1)} KB" if file_size < 1024 * 1024 else f"{round(file_size / (1024 * 1024), 2)} MB",
+        "verification_status": "PENDING_VERIFICATION",
+        "status_description": "Document uploaded successfully. Queued for statutory desk verification.",
+        "extracted_name": user.get("full_name"),
+        "doc_type_detected": doc_type,
+        "uploaded_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    }
+
+    doc_record = add_user_document(
+        user_id=user_id,
+        doc_type=doc_type,
+        doc_name=clean_name,
+        ocr_data=ocr_metadata,
+        file_path=f"uploads/{unique_filename}",
+        status="UPLOADED",
+        file_size=file_size
+    )
+
+    return {
+        "success": True,
+        "message": f"Document '{clean_name}' uploaded successfully. Status: Uploaded (Pending Verification).",
+        "document": doc_record
+    }
 
 
 @router.post("/generate-demo")
@@ -146,424 +358,3 @@ def generate_sample_document_for_user(user_id: int, doc_type: str = "aadhaar", d
     return generate_sample_document(req)
 
 
-@router.post("/upload")
-async def upload_document(
-    user_id: int = Form(...),
-    doc_type: str = Form(...),
-    doc_name: str = Form(...),
-    target_requirement: Optional[str] = Form(None),
-    file: UploadFile = File(...)
-):
-    """
-    Accepts a real document file upload (PDF/JPG/PNG).
-    Saves the file to disk and records it as VERIFIED in the citizen locker.
-    Links target_requirement so workflow stages can immediately satisfy readiness.
-    """
-    user = get_user_by_id(user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    if not doc_name or not doc_name.strip():
-        raise HTTPException(status_code=400, detail="Document display name is required.")
-
-    original_filename = file.filename or "document"
-    ext = Path(original_filename).suffix.lower()
-    if ext not in ALLOWED_EXTENSIONS:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Unsupported file type '{ext}'. Allowed: PDF, JPG, JPEG, PNG."
-        )
-
-    # Build safe storage filename: user_<id>_<random>_<doctype><ext>
-    safe_filename = f"user_{user_id}_{random.randint(10000, 99999)}_{doc_type}{ext}"
-    user_upload_dir = UPLOADS_DIR / str(user_id)
-    user_upload_dir.mkdir(parents=True, exist_ok=True)
-    file_path = user_upload_dir / safe_filename
-
-    # Stream-save to disk
-    try:
-        with open(file_path, "wb") as f:
-            shutil.copyfileobj(file.file, f)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"File storage error: {str(e)}")
-
-    relative_path = f"backend/uploads/{user_id}/{safe_filename}"
-
-    clean_target_req = (target_requirement or doc_name).strip()
-
-    doc_record = add_user_document(
-        user_id=user_id,
-        doc_type=doc_type,
-        doc_name=doc_name.strip(),
-        ocr_data={
-            "original_filename": original_filename,
-            "content_type": file.content_type,
-            "target_requirement": clean_target_req,
-            "note": "Uploaded by citizen and verified."
-        },
-        file_path=relative_path,
-        status="VERIFIED"
-    )
-
-    return {
-        "success": True,
-        "message": f"Document '{doc_name.strip()}' uploaded and verified successfully!",
-        "document": doc_record
-    }
-
-
-@router.get("/view/{doc_id}")
-def view_document(doc_id: int, user_id: int):
-    """
-    Serves the actual uploaded file for inline viewing/downloading.
-    If the document is demo-generated, generates a verified digital e-Document view.
-    """
-    import json
-    from fastapi.responses import HTMLResponse
-    from backend.db import get_db_connection
-    from backend.config import PROJECT_ROOT, BACKEND_DIR, UPLOADS_DIR
-
-    with get_db_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute(
-            "SELECT * FROM user_documents WHERE id = ? AND user_id = ?",
-            (doc_id, user_id)
-        )
-        row = cursor.fetchone()
-
-    if not row:
-        raise HTTPException(status_code=404, detail="Document not found or access denied.")
-
-    doc = dict(row)
-    file_path_str = (doc.get("file_path") or "").strip()
-
-    # 1. Check if a physical file exists in any candidate location
-    abs_path = None
-    if file_path_str:
-        p = Path(file_path_str)
-        if p.is_absolute() and p.exists():
-            abs_path = p
-        else:
-            candidates = [
-                PROJECT_ROOT / file_path_str,
-                BACKEND_DIR / file_path_str,
-                UPLOADS_DIR / str(user_id) / p.name,
-                UPLOADS_DIR / p.name,
-                PROJECT_ROOT / "backend" / file_path_str
-            ]
-            for c in candidates:
-                if c.exists():
-                    abs_path = c
-                    break
-
-    # If physical file found, stream with inline disposition
-    if abs_path and abs_path.exists():
-        ext = abs_path.suffix.lower()
-        if ext == ".pdf":
-            media_type = "application/pdf"
-        elif ext == ".png":
-            media_type = "image/png"
-        elif ext in [".jpg", ".jpeg"]:
-            media_type = "image/jpeg"
-        else:
-            media_type = "application/octet-stream"
-
-        return FileResponse(
-            path=str(abs_path),
-            media_type=media_type,
-            headers={
-                "Content-Disposition": f'inline; filename="{abs_path.name}"'
-            }
-        )
-
-    # 2. If no physical file (Demo Generated Document), render verified Digital Credential
-    ocr_raw = doc.get("verified_ocr_data_json") or "{}"
-    try:
-        ocr_data = json.loads(ocr_raw) if isinstance(ocr_raw, str) else ocr_raw
-    except Exception:
-        ocr_data = {}
-
-    user = get_user_by_id(user_id) or {}
-    user_name = user.get("full_name") or user.get("username") or "Verified Citizen"
-    doc_title = doc.get("doc_name") or "Government Welfare Document"
-    doc_type = (doc.get("doc_type") or "Document").replace("_", " ").title()
-    created_at = doc.get("created_at") or "2026-10-22"
-
-    rows_html = ""
-    for k, v in ocr_data.items():
-        if k in ["original_filename", "content_type", "note"]:
-            continue
-        key_label = k.replace("_", " ").title()
-        rows_html += f"""
-        <tr>
-            <td style="padding: 10px 14px; font-weight: 600; color: #1e3a8a; border-bottom: 1px solid #e2e8f0; width: 40%;">{key_label}</td>
-            <td style="padding: 10px 14px; color: #1e293b; border-bottom: 1px solid #e2e8f0;">{v}</td>
-        </tr>
-        """
-
-    if not rows_html:
-        rows_html = f"""
-        <tr>
-            <td style="padding: 10px 14px; font-weight: 600; color: #1e3a8a; border-bottom: 1px solid #e2e8f0;">Citizen Name</td>
-            <td style="padding: 10px 14px; color: #1e293b; border-bottom: 1px solid #e2e8f0;">{user_name}</td>
-        </tr>
-        <tr>
-            <td style="padding: 10px 14px; font-weight: 600; color: #1e3a8a; border-bottom: 1px solid #e2e8f0;">Occupation</td>
-            <td style="padding: 10px 14px; color: #1e293b; border-bottom: 1px solid #e2e8f0;">{user.get('occupation', 'Citizen')}</td>
-        </tr>
-        <tr>
-            <td style="padding: 10px 14px; font-weight: 600; color: #1e3a8a; border-bottom: 1px solid #e2e8f0;">District & State</td>
-            <td style="padding: 10px 14px; color: #1e293b; border-bottom: 1px solid #e2e8f0;">{user.get('district', 'Jaipur')}, {user.get('state', 'Rajasthan')}</td>
-        </tr>
-        """
-
-    html_content = f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JanSetu e-Locker — {doc_title}</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <style>
-        body {{
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            background: #f1f5f9;
-            margin: 0;
-            padding: 30px 20px;
-            display: flex;
-            justify-content: center;
-        }}
-        .cert-card {{
-            background: #ffffff;
-            border-radius: 12px;
-            max-width: 680px;
-            width: 100%;
-            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1);
-            overflow: hidden;
-            border: 1px solid #cbd5e1;
-            position: relative;
-        }}
-        .cert-header {{
-            background: linear-gradient(135deg, #0f2c59 0%, #1e3a8a 100%);
-            color: #ffffff;
-            padding: 24px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }}
-        .cert-header-left {{
-            display: flex;
-            align-items: center;
-            gap: 14px;
-        }}
-        .cert-header-left i {{
-            font-size: 32px;
-            color: #f59e0b;
-        }}
-        .cert-header-title {{
-            font-size: 18px;
-            font-weight: 700;
-            letter-spacing: 0.5px;
-        }}
-        .cert-header-sub {{
-            font-size: 12px;
-            color: #cbd5e1;
-        }}
-        .cert-badge {{
-            background: #065f46;
-            color: #d1fae5;
-            padding: 4px 10px;
-            border-radius: 9999px;
-            font-size: 11px;
-            font-weight: 700;
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-        }}
-        .cert-body {{
-            padding: 28px;
-        }}
-        .doc-title-row {{
-            border-bottom: 2px solid #e2e8f0;
-            padding-bottom: 14px;
-            margin-bottom: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-end;
-        }}
-        .doc-title-row h2 {{
-            margin: 0;
-            font-size: 22px;
-            color: #0f2c59;
-        }}
-        .doc-meta {{
-            font-size: 12px;
-            color: #64748b;
-        }}
-        .details-table {{
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 24px;
-            font-size: 13.5px;
-        }}
-        .cert-seal-box {{
-            background: #f8fafc;
-            border: 1px dashed #cbd5e1;
-            border-radius: 8px;
-            padding: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }}
-        .seal-info {{
-            font-size: 12px;
-            color: #475569;
-            line-height: 1.5;
-        }}
-        .seal-qr {{
-            width: 60px;
-            height: 60px;
-            background: #ffffff;
-            border: 1px solid #cbd5e1;
-            border-radius: 6px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 32px;
-            color: #0f2c59;
-        }}
-        .cert-footer {{
-            background: #f8fafc;
-            padding: 16px 24px;
-            border-top: 1px solid #e2e8f0;
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-        }}
-        .btn {{
-            padding: 8px 16px;
-            border-radius: 6px;
-            font-size: 13px;
-            font-weight: 600;
-            cursor: pointer;
-            border: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            text-decoration: none;
-        }}
-        .btn-print {{
-            background: #0f2c59;
-            color: #ffffff;
-        }}
-        .btn-close {{
-            background: #e2e8f0;
-            color: #334155;
-        }}
-    </style>
-</head>
-<body>
-    <div class="cert-card">
-        <div class="cert-header">
-            <div class="cert-header-left">
-                <i class="fa-solid fa-landmark-flag"></i>
-                <div>
-                    <div class="cert-header-title">जनसेतु — JanSetu National Welfare Portal</div>
-                    <div class="cert-header-sub">Government of India Digital Locker Verified Credential</div>
-                </div>
-            </div>
-            <div class="cert-badge">
-                <i class="fa-solid fa-circle-check"></i> Digitally Verified
-            </div>
-        </div>
-
-        <div class="cert-body">
-            <div class="doc-title-row">
-                <div>
-                    <h2>{doc_title}</h2>
-                    <div class="doc-meta">Category: {doc_type} • Issued To: <strong>{user_name}</strong></div>
-                </div>
-                <div class="doc-meta">Record ID: #{doc.get('id', 1)}</div>
-            </div>
-
-            <table class="details-table">
-                {rows_html}
-            </table>
-
-            <div class="cert-seal-box">
-                <div class="seal-info">
-                    <strong><i class="fa-solid fa-fingerprint"></i> JanSetu Cryptographic Verification Token:</strong><br>
-                    UID-JS-{doc.get('id', 1)}-{random.randint(100000, 999999)}<br>
-                    Issued on: {created_at} • Status: Active & Authentic
-                </div>
-                <div class="seal-qr">
-                    <i class="fa-solid fa-qrcode"></i>
-                </div>
-            </div>
-        </div>
-
-        <div class="cert-footer">
-            <button class="btn btn-print" onclick="window.print()">
-                <i class="fa-solid fa-print"></i> Print / Save as PDF
-            </button>
-            <button class="btn btn-close" onclick="window.close()">
-                <i class="fa-solid fa-xmark"></i> Close
-            </button>
-        </div>
-    </div>
-</body>
-</html>"""
-    return HTMLResponse(content=html_content)
-
-
-@router.delete("/{doc_id}")
-def delete_document(doc_id: int, user_id: int):
-    """
-    Deletes a document record (and its physical file if any) for the owning user.
-    """
-    from backend.db import get_db_connection
-    from backend.config import PROJECT_ROOT, BACKEND_DIR, UPLOADS_DIR
-
-    with get_db_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute(
-            "SELECT * FROM user_documents WHERE id = ? AND user_id = ?",
-            (doc_id, user_id)
-        )
-        row = cursor.fetchone()
-
-    if not row:
-        raise HTTPException(status_code=404, detail="Document not found or access denied.")
-
-    doc = dict(row)
-    file_path_str = (doc.get("file_path") or "").strip()
-
-    # Delete physical file if it exists in any location
-    if file_path_str:
-        p = Path(file_path_str)
-        candidates = [
-            p if p.is_absolute() else None,
-            PROJECT_ROOT / file_path_str,
-            BACKEND_DIR / file_path_str,
-            UPLOADS_DIR / str(user_id) / p.name,
-            UPLOADS_DIR / p.name,
-            PROJECT_ROOT / "backend" / file_path_str
-        ]
-        for c in candidates:
-            if c and c.exists():
-                try:
-                    c.unlink()
-                except Exception:
-                    pass
-                break
-
-    # Delete from DB
-    deleted = delete_user_document(doc_id, user_id)
-    if not deleted:
-        raise HTTPException(status_code=500, detail="Failed to delete document record.")
-
-    return {
-        "success": True,
-        "message": f"Document '{doc.get('doc_name', '')}' deleted successfully.",
-        "deleted_id": doc_id
-    }

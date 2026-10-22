@@ -1270,22 +1270,53 @@
                 <div id="page-documents" class="page-panel">
                     <div class="panel-header-row">
                         <div>
-                            <h2><i class="fa-solid fa-folder-open"></i> <span data-i18n="docs_page_title">My Documents</span></h2>
-                            <p data-i18n="docs_page_subtitle">Manage identity proofs, certificates, and supporting documents. Uploaded documents are used in eligibility and readiness checks.</p>
+                            <h2><i class="fa-solid fa-folder-open"></i> Citizen Document Locker</h2>
+                            <p>Manage verified identity proofs, statutory certificates, and uploaded documents used for scheme eligibility and readiness audit.</p>
                         </div>
-                        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-                            <button class="btn btn-outline btn-sm" onclick="generateAllDemoDocs()">
-                                <i class="fa-solid fa-magic"></i> Auto-Generate Demo Set
+                        <div class="header-action-group">
+                            <button class="btn btn-primary btn-sm" id="btn-top-upload-doc" onclick="openUploadModal()">
+                                <i class="fa-solid fa-cloud-arrow-up"></i> Upload Document
                             </button>
-                            <button class="btn btn-primary btn-sm" onclick="openUploadDocModal()" id="btn-open-upload-doc-modal">
-                                <i class="fa-solid fa-upload"></i> <span data-i18n="btn_upload_doc">Upload Document</span>
+                            <button class="btn btn-outline btn-sm" onclick="generateAllDemoDocs()" title="Quickly populate sample verified proofs for testing">
+                                <i class="fa-solid fa-magic"></i> Auto-Generate Demo Set
                             </button>
                         </div>
                     </div>
 
-                    <!-- User Documents Grid -->
-                    <div class="user-docs-grid" id="user-docs-container">
-                        <!-- Populated by JS -->
+                    <!-- Locker Metrics Summary Strip -->
+                    <div class="docs-summary-strip">
+                        <div class="summary-pill active" id="pill-filter-all" onclick="filterDocsView('all')">
+                            <span>Total Documents</span>
+                            <strong id="docs-count-total">0</strong>
+                        </div>
+                        <div class="summary-pill" id="pill-filter-verified" onclick="filterDocsView('verified')">
+                            <span class="dot-verified"></span>
+                            <span>Verified</span>
+                            <strong id="docs-count-verified">0</strong>
+                        </div>
+                        <div class="summary-pill" id="pill-filter-uploaded" onclick="filterDocsView('uploaded')">
+                            <span class="dot-uploaded"></span>
+                            <span>Uploaded (In Review)</span>
+                            <strong id="docs-count-uploaded">0</strong>
+                        </div>
+                    </div>
+
+                    <!-- User Documents List / Table -->
+                    <div class="user-docs-table-wrapper" id="user-docs-table-wrapper">
+                        <table class="documents-table" id="documents-table">
+                            <thead>
+                                <tr>
+                                    <th>Document Display Name</th>
+                                    <th>Category</th>
+                                    <th>Upload Date</th>
+                                    <th>Current Status</th>
+                                    <th style="text-align: right;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="user-docs-container">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
                     </div>
                 </div>
 
@@ -1723,6 +1754,173 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary btn-sm" onclick="toggleNotificationsModal(false)">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- UPLOAD DOCUMENT MODAL                                           -->
+    <!-- Category, File (PDF/JPG/JPEG/PNG), Custom Display Name          -->
+    <!-- ============================================================== -->
+    <div class="modal-overlay" id="upload-doc-modal" style="display: none;" onclick="handleModalOverlayClick(event, 'upload-doc-modal')">
+        <div class="modal-card doc-modal-card">
+            <div class="modal-header">
+                <div class="modal-title-with-icon">
+                    <div class="modal-icon-badge upload-badge"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+                    <div>
+                        <h3>Upload Document</h3>
+                        <p class="modal-subtitle">Add official proof to your citizen locker</p>
+                    </div>
+                </div>
+                <button class="modal-close-btn" onclick="closeUploadModal()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <form id="form-upload-document" onsubmit="handleUploadDocumentSubmit(event)">
+                <div class="modal-body-scroll">
+                    <!-- Error & Success Messages -->
+                    <div id="upload-modal-error" class="modal-alert-box error" style="display: none;"></div>
+                    <div id="upload-modal-success" class="modal-alert-box success" style="display: none;"></div>
+
+                    <!-- Category Dropdown -->
+                    <div class="form-group mb-3">
+                        <label for="upload-modal-category"><strong>Document Category <span class="required-star">*</span></strong></label>
+                        <select id="upload-modal-category" required onchange="handleUploadCategoryChange()">
+                            <option value="" disabled selected>Select category...</option>
+                            <option value="aadhaar">Aadhaar Card (Identity Proof)</option>
+                            <option value="bank_passbook">Bank Account Passbook / Statement</option>
+                            <option value="land_record">Land Ownership Document (Khatauni / Khasra / RoR)</option>
+                            <option value="income_certificate">Income Certificate (Tehsildar / SDO)</option>
+                            <option value="vending_certificate">Certificate of Vending / Trade License</option>
+                            <option value="caste_certificate">Caste / Category Certificate (SC/ST/OBC/EWS)</option>
+                            <option value="ration_card">Ration Card / NFSA / Family ID</option>
+                            <option value="educational_certificate">Educational Marksheet / Degree / Fee Receipt</option>
+                            <option value="disability_certificate">Disability Certificate / UDID Card</option>
+                            <option value="other">Other Statutory Document</option>
+                        </select>
+                        <small class="form-hint-text">Select the category that matches this welfare document.</small>
+                    </div>
+
+                    <!-- Document Display Name -->
+                    <div class="form-group mb-3">
+                        <label for="upload-modal-docname"><strong>Document Display Name <span class="required-star">*</span></strong></label>
+                        <input type="text" id="upload-modal-docname" placeholder="e.g., Aadhaar Card, SBI Passbook 2026, Land Khasra" required maxlength="120">
+                        <small class="form-hint-text">Choose the name under which the document will be saved and displayed.</small>
+                    </div>
+
+                    <!-- File Selection (PDF, JPG, JPEG, PNG) -->
+                    <div class="form-group mb-3">
+                        <label><strong>Select File <span class="required-star">*</span></strong></label>
+                        <div class="file-drop-zone" id="file-drop-zone" onclick="document.getElementById('upload-modal-file').click()">
+                            <input type="file" id="upload-modal-file" accept=".pdf,.jpg,.jpeg,.png" style="display: none;" onchange="handleFileSelection(event)">
+                            <div class="drop-zone-icon"><i class="fa-solid fa-file-arrow-up"></i></div>
+                            <div class="drop-zone-title" id="drop-zone-title">Click to choose a file or drag & drop here</div>
+                            <div class="drop-zone-desc" id="drop-zone-desc">Supported: <strong>PDF, JPG, JPEG, PNG</strong> (Max 15MB)</div>
+                            <div class="drop-zone-preview" id="drop-zone-preview" style="display: none;">
+                                <div class="file-meta-row">
+                                    <span class="file-preview-badge" id="drop-zone-filename"><i class="fa-regular fa-file"></i> sample.pdf</span>
+                                    <span class="file-size-badge" id="drop-zone-filesize">240 KB</span>
+                                </div>
+                                <button type="button" class="btn-clear-file" onclick="clearSelectedFile(event)" title="Clear selection">
+                                    <i class="fa-solid fa-xmark"></i> Remove
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="upload-compliance-notice">
+                        <i class="fa-solid fa-shield-halved"></i>
+                        <span><strong>Statutory Verification Notice:</strong> Uploaded documents are saved under your profile with status <em>Uploaded (Pending Verification)</em> and are immediately audited by the Document Readiness Agent.</span>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeUploadModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="btn-submit-upload">
+                        <i class="fa-solid fa-cloud-arrow-up"></i>
+                        <span id="btn-upload-text">Upload Document</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- VIEW DOCUMENT MODAL                                             -->
+    <!-- Supports safe preview of PDF, images, or simulated proofs       -->
+    <!-- ============================================================== -->
+    <div class="modal-overlay" id="view-doc-modal" style="display: none;" onclick="handleModalOverlayClick(event, 'view-doc-modal')">
+        <div class="modal-card doc-view-card">
+            <div class="modal-header">
+                <div class="modal-title-with-icon">
+                    <div class="modal-icon-badge view-badge"><i class="fa-regular fa-file-lines"></i></div>
+                    <div>
+                        <h3 id="view-doc-title">Document Preview</h3>
+                        <div class="view-doc-tags" id="view-doc-tags">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+                </div>
+                <button class="modal-close-btn" onclick="closeViewDocModal()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <div class="modal-body-scroll view-doc-body">
+                <!-- Preview Canvas -->
+                <div id="view-doc-preview-area" class="doc-preview-canvas">
+                    <!-- Populated dynamically -->
+                </div>
+
+                <!-- Document Details Card -->
+                <div class="doc-metadata-summary" id="view-doc-metadata">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeViewDocModal()">Close</button>
+                <a id="btn-view-doc-download" href="#" target="_blank" download class="btn btn-outline" style="display: none;">
+                    <i class="fa-solid fa-download"></i> Download
+                </a>
+                <a id="btn-view-doc-open" href="#" target="_blank" class="btn btn-primary" style="display: none;">
+                    <i class="fa-solid fa-arrow-up-right-from-square"></i> Open Original
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- DELETE CONFIRMATION MODAL                                       -->
+    <!-- Asks confirmation before deleting document                      -->
+    <!-- ============================================================== -->
+    <div class="modal-overlay" id="delete-doc-modal" style="display: none;" onclick="handleModalOverlayClick(event, 'delete-doc-modal')">
+        <div class="modal-card doc-delete-card">
+            <div class="modal-header delete-header">
+                <div class="modal-title-with-icon">
+                    <div class="modal-icon-badge danger-badge"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                    <div>
+                        <h3>Confirm Document Deletion</h3>
+                        <p class="modal-subtitle">Permanent action in citizen locker</p>
+                    </div>
+                </div>
+                <button class="modal-close-btn" onclick="closeDeleteModal()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <div class="modal-body-scroll">
+                <p style="margin-bottom: 12px; font-size: 14px;">Are you sure you want to delete <strong id="delete-doc-name-target">this document</strong>?</p>
+                <div class="delete-warning-box">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div>
+                        <strong>Impact on Scheme Document Readiness:</strong>
+                        <p>Deleting this record will immediately update your Documents page, mark this proof as <em>Missing</em> in the Document Readiness section, and recalculate your readiness percentage.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeDeleteModal()">Cancel</button>
+                <button type="button" class="btn btn-danger" id="btn-confirm-delete" onclick="executeDeleteDocument()">
+                    <i class="fa-solid fa-trash-can"></i>
+                    <span>Delete Document</span>
+                </button>
             </div>
         </div>
     </div>

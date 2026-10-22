@@ -393,6 +393,62 @@ Citizen Facts:
 # Agent 4: Document Readiness Agent
 # ==========================================
 
+
+def _infer_doc_type_key(req_str: str) -> str:
+    """Infers the standard document category key from a scheme requirement string."""
+    r = req_str.lower()
+    if "aadhaar" in r:
+        return "aadhaar"
+    if "bank" in r or "passbook" in r:
+        return "bank_passbook"
+    if "vending" in r or "cov" in r or "trade" in r or "vendor" in r:
+        return "vending_certificate"
+    if "land" in r or "khasra" in r or "ror" in r or "khatauni" in r or "patta" in r:
+        return "land_record"
+    if "income" in r or "salary" in r or "bpl" in r:
+        return "income_certificate"
+    if "caste" in r or "community" in r or "category" in r:
+        return "caste_certificate"
+    if "ration" in r or "family" in r:
+        return "ration_card"
+    if "college" in r or "marksheet" in r or "admission" in r or "degree" in r or "diploma" in r:
+        return "educational_certificate"
+    if "disability" in r or "pwd" in r or "handicap" in r:
+        return "disability_certificate"
+    return "other"
+
+
+def _find_matching_user_document(req_str: str, user_docs: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    """Finds a matching user document from the citizen's locker."""
+    r = req_str.lower()
+    for d in user_docs:
+        dt = (d.get("doc_type") or "").lower()
+        dn = (d.get("doc_name") or "").lower()
+
+        if "aadhaar" in r and ("aadhaar" in dt or "aadhaar" in dn):
+            return d
+        if ("bank" in r or "passbook" in r) and ("bank" in dt or "bank" in dn or "passbook" in dt or "passbook" in dn):
+            return d
+        if ("vending" in r or "cov" in r or "trade" in r) and ("vending" in dt or "vending" in dn or "trade" in dt):
+            return d
+        if ("land" in r or "khasra" in r or "ror" in r or "khatauni" in r) and ("land" in dt or "land" in dn or "khasra" in dn or "ror" in dn):
+            return d
+        if ("income" in r or "salary" in r or "affidavit" in r) and ("income" in dt or "income" in dn or "salary" in dn):
+            return d
+        if ("caste" in r or "category" in r or "community" in r) and ("caste" in dt or "caste" in dn):
+            return d
+        if ("ration" in r or "family" in r) and ("ration" in dt or "ration" in dn or "family" in dt or "family" in dn):
+            return d
+        if ("college" in r or "marksheet" in r or "admission" in r or "fee" in r) and ("college" in dt or "admission" in dt or "marksheet" in dn or "fee" in dn):
+            return d
+        if ("disability" in r or "pwd" in r) and ("disability" in dt or "disability" in dn or "pwd" in dt):
+            return d
+        # Direct keyword overlap
+        if dt and dt != "other" and dt in r:
+            return d
+    return None
+
+
 def document_readiness_agent(state: WorkflowState) -> Dict[str, Any]:
     """Cross-references required scheme documents with uploaded user demo documents."""
     logger.info("Executing Agent 4: Document Readiness Agent")
@@ -404,123 +460,71 @@ def document_readiness_agent(state: WorkflowState) -> Dict[str, Any]:
     user_docs = get_user_documents(user_id)
 
     required_docs = scheme.get("required_documents", []) if scheme else []
+    if not required_docs:
+        required_docs = ["Aadhaar Card (Identity Proof)", "Bank Account Passbook / Statement"]
 
     doc_status_list = []
     ready_count = 0
+    uploaded_count = 0
 
     for req in required_docs:
-        req_lower = req.lower().strip()
-        req_clean = req_lower.replace("-", " ").replace("/", " ").replace("(", " ").replace(")", " ")
-        req_tokens = set(t for t in req_clean.split() if len(t) > 2)
-        is_ready = False
-        matched_user_doc = None
+        matched = _find_matching_user_document(req, user_docs)
+        doc_type_key = _infer_doc_type_key(req)
 
-        for d in user_docs:
-            dt = (d.get("doc_type") or "").lower().strip()
-            dn = (d.get("doc_name") or "").lower().strip()
-            dn_tokens = set(t for t in dn.replace("-", " ").replace("/", " ").replace("(", " ").replace(")", " ").split() if len(t) > 2)
+        if matched:
+            raw_status = (matched.get("status") or "UPLOADED").upper()
+            doc_id = matched.get("id")
+            doc_name = matched.get("doc_name") or req
 
-            ocr_info = d.get("verified_ocr_data") or d.get("ocr_data") or {}
-            if isinstance(ocr_info, str):
-                try:
-                    ocr_info = json.loads(ocr_info)
-                except Exception:
-                    ocr_info = {}
-            target_req = (ocr_info.get("target_requirement") or "").lower().strip()
-            target_tokens = set(t for t in target_req.replace("-", " ").replace("/", " ").replace("(", " ").replace(")", " ").split() if len(t) > 2)
-
-            # 1. Direct target requirement match (e.g. uploaded specifically for this card)
-            if target_req:
-                if target_req in req_lower or req_lower in target_req:
-                    is_ready = True
-                elif req_tokens and target_tokens and req_tokens.intersection(target_tokens):
-                    is_ready = True
-
-            # 2. Application form / KCC / Scheme form
-            if ("form" in req_clean or "kcc" in req_clean or "application" in req_clean) and (
-                dt == "application_form" or "form" in dn or "kcc" in dn or "application" in dn
-            ):
-                is_ready = True
-
-            # 3. Photographs / Passport photos
-            elif ("photo" in req_clean or "passport" in req_clean or "photograph" in req_clean) and (
-                dt == "photo" or "photo" in dn or "passport" in dn or "photograph" in dn
-            ):
-                is_ready = True
-
-            # 4. Identity / Aadhaar / Voter ID / PAN
-            elif ("aadhaar" in req_clean or "voter" in req_clean or "identity" in req_clean) and (
-                dt in ["aadhaar", "identity_proof"] or "aadhaar" in dn or "voter" in dn or "identity" in dn or "pan" in dn
-            ):
-                is_ready = True
-
-            # 5. Bank Passbook / Statement
-            elif ("bank" in req_clean or "passbook" in req_clean or "account" in req_clean or "statement" in req_clean) and (
-                dt == "bank_passbook" or "bank" in dn or "passbook" in dn or "account" in dn or "statement" in dn
-            ):
-                is_ready = True
-
-            # 6. Land / Revenue / Lease / Title / Khatauni / Khasra
-            elif ("land" in req_clean or "lease" in req_clean or "deed" in req_clean or "revenue" in req_clean or "khasra" in req_clean or "ror" in req_clean or "patta" in req_clean or "title" in req_clean or "ownership" in req_clean) and (
-                dt in ["land_record", "address_proof"] or "land" in dn or "lease" in dn or "deed" in dn or "khasra" in dn or "residence" in dn or "address" in dn
-            ):
-                is_ready = True
-
-            # 7. Income / Salary / Affidavit
-            elif ("income" in req_clean or "salary" in req_clean or "affidavit" in req_clean) and (
-                dt == "income_certificate" or "income" in dn or "salary" in dn
-            ):
-                is_ready = True
-
-            # 8. Caste / Category
-            elif ("caste" in req_clean or "community" in req_clean) and (
-                dt == "caste_certificate" or "caste" in dn
-            ):
-                is_ready = True
-
-            # 9. Ration / Family ID
-            elif ("ration" in req_clean or "family" in req_clean or "bpl" in req_clean) and (
-                dt == "ration_card" or "ration" in dn or "family" in dn or "bpl" in dn
-            ):
-                is_ready = True
-
-            # 10. Education / College
-            elif ("college" in req_clean or "marksheet" in req_clean or "admission" in req_clean or "education" in req_clean or "degree" in req_clean) and (
-                dt == "college_id" or "college" in dn or "admission" in dn or "marksheet" in dn
-            ):
-                is_ready = True
-
-            # 11. Fuzzy token overlap
-            elif req_tokens and dn_tokens and (req_tokens.intersection(dn_tokens)):
-                is_ready = True
-
-            if is_ready:
-                matched_user_doc = d
-                break
-
-        if is_ready:
-            ready_count += 1
-            has_real_file = bool(matched_user_doc and matched_user_doc.get("file_path"))
-            doc_status_list.append({
-                "document_name": req,
-                "status": "READY",
-                "badge": "Uploaded & Verified" if has_real_file else "Verified Demo Document",
-                "notes": f"Matched with '{matched_user_doc.get('doc_name')}' in your locker." if matched_user_doc else "Verified automatically via simulated OCR extraction."
-            })
+            if raw_status in ("VERIFIED", "VERIFIED_DEMO"):
+                ready_count += 1
+                doc_status_list.append({
+                    "document_name": req,
+                    "status": "READY",
+                    "badge": "Verified Demo Document",
+                    "notes": "Verified automatically via simulated OCR extraction.",
+                    "doc_id": doc_id,
+                    "matched_doc_name": doc_name,
+                    "doc_type_key": doc_type_key,
+                    "is_missing": False
+                })
+            else:
+                # User uploaded document (pending verification)
+                uploaded_count += 1
+                doc_status_list.append({
+                    "document_name": req,
+                    "status": "UPLOADED",
+                    "badge": "Uploaded (Pending Verification)",
+                    "notes": "Document uploaded by citizen; awaiting statutory desk verification.",
+                    "doc_id": doc_id,
+                    "matched_doc_name": doc_name,
+                    "doc_type_key": doc_type_key,
+                    "is_missing": False
+                })
         else:
+            # Unavailable document: Must display status as Missing and provide upload option
             doc_status_list.append({
                 "document_name": req,
                 "status": "MISSING",
-                "badge": "Upload or Demo Generate Required",
-                "notes": "Required for formal processing. You can upload your document or click 'Generate Demo Document'."
+                "badge": "Missing Document",
+                "notes": "Required document unavailable in your locker. Click 'Upload Document' to add it.",
+                "doc_id": None,
+                "matched_doc_name": None,
+                "doc_type_key": doc_type_key,
+                "is_missing": True
             })
 
     total_required = max(1, len(required_docs))
-    readiness_percentage = round((ready_count / total_required) * 100)
+    satisfied_count = ready_count + uploaded_count
+    missing_count = max(0, total_required - satisfied_count)
+    readiness_percentage = round((satisfied_count / total_required) * 100)
 
     result = {
         "overall_status": "READY_TO_APPLY" if readiness_percentage >= 50 else "DOCUMENTS_NEEDED",
-        "ready_count": ready_count,
+        "ready_count": satisfied_count,
+        "verified_count": ready_count,
+        "uploaded_count": uploaded_count,
+        "missing_count": missing_count,
         "total_required": len(required_docs),
         "readiness_percentage": readiness_percentage,
         "checklist": doc_status_list,
@@ -572,7 +576,7 @@ Respond in JSON format:
 }
 """
 
-    ready_doc_names = [d["document_name"] for d in docs if d["status"] == "READY"]
+    ready_doc_names = [d["document_name"] for d in docs if d.get("status") in ("READY", "UPLOADED")]
 
     user_prompt = f"""
 Scheme Name: {scheme.get('name') if scheme else 'Government Welfare Scheme'}

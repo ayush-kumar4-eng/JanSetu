@@ -18,7 +18,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
-from backend.config import HOST, PORT, SQLITE_PATH
+from backend.config import HOST, PORT, SQLITE_PATH, UPLOADS_DIR
 from backend.vector_search import ensure_schemes_indexed
 from backend.routers import auth, schemes, workflow, documents, applications, chat
 
@@ -82,6 +82,10 @@ def health_check():
         "database_connected": SQLITE_PATH.exists()
     }
 
+
+# Serve Uploaded Documents
+if UPLOADS_DIR.exists():
+    app.mount("/uploads", StaticFiles(directory=str(UPLOADS_DIR)), name="uploads")
 
 # Serve Frontend Static Assets
 if FRONTEND_DIR.exists():
