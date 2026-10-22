@@ -336,6 +336,62 @@ Citizen Facts:
 # Agent 4: Document Readiness Agent
 # ==========================================
 
+
+def _infer_doc_type_key(req_str: str) -> str:
+    """Infers the standard document category key from a scheme requirement string."""
+    r = req_str.lower()
+    if "aadhaar" in r:
+        return "aadhaar"
+    if "bank" in r or "passbook" in r:
+        return "bank_passbook"
+    if "vending" in r or "cov" in r or "trade" in r or "vendor" in r:
+        return "vending_certificate"
+    if "land" in r or "khasra" in r or "ror" in r or "khatauni" in r or "patta" in r:
+        return "land_record"
+    if "income" in r or "salary" in r or "bpl" in r:
+        return "income_certificate"
+    if "caste" in r or "community" in r or "category" in r:
+        return "caste_certificate"
+    if "ration" in r or "family" in r:
+        return "ration_card"
+    if "college" in r or "marksheet" in r or "admission" in r or "degree" in r or "diploma" in r:
+        return "educational_certificate"
+    if "disability" in r or "pwd" in r or "handicap" in r:
+        return "disability_certificate"
+    return "other"
+
+
+def _find_matching_user_document(req_str: str, user_docs: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    """Finds a matching user document from the citizen's locker."""
+    r = req_str.lower()
+    for d in user_docs:
+        dt = (d.get("doc_type") or "").lower()
+        dn = (d.get("doc_name") or "").lower()
+
+        if "aadhaar" in r and ("aadhaar" in dt or "aadhaar" in dn):
+            return d
+        if ("bank" in r or "passbook" in r) and ("bank" in dt or "bank" in dn or "passbook" in dt or "passbook" in dn):
+            return d
+        if ("vending" in r or "cov" in r or "trade" in r) and ("vending" in dt or "vending" in dn or "trade" in dt):
+            return d
+        if ("land" in r or "khasra" in r or "ror" in r or "khatauni" in r) and ("land" in dt or "land" in dn or "khasra" in dn or "ror" in dn):
+            return d
+        if ("income" in r or "salary" in r or "affidavit" in r) and ("income" in dt or "income" in dn or "salary" in dn):
+            return d
+        if ("caste" in r or "category" in r or "community" in r) and ("caste" in dt or "caste" in dn):
+            return d
+        if ("ration" in r or "family" in r) and ("ration" in dt or "ration" in dn or "family" in dt or "family" in dn):
+            return d
+        if ("college" in r or "marksheet" in r or "admission" in r or "fee" in r) and ("college" in dt or "admission" in dt or "marksheet" in dn or "fee" in dn):
+            return d
+        if ("disability" in r or "pwd" in r) and ("disability" in dt or "disability" in dn or "pwd" in dt):
+            return d
+        # Direct keyword overlap
+        if dt and dt != "other" and dt in r:
+            return d
+    return None
+
+
 def document_readiness_agent(state: WorkflowState) -> Dict[str, Any]:
     """Cross-references required scheme documents with uploaded user demo documents."""
     logger.info("Executing Agent 4: Document Readiness Agent")
@@ -347,59 +403,71 @@ def document_readiness_agent(state: WorkflowState) -> Dict[str, Any]:
     user_docs = get_user_documents(user_id)
 
     required_docs = scheme.get("required_documents", []) if scheme else []
-
-    # Map user doc types to keywords
-    available_doc_types = [d.get("doc_type", "").lower() for d in user_docs]
-    available_doc_names = [d.get("doc_name", "").lower() for d in user_docs]
+    if not required_docs:
+        required_docs = ["Aadhaar Card (Identity Proof)", "Bank Account Passbook / Statement"]
 
     doc_status_list = []
     ready_count = 0
+    uploaded_count = 0
 
     for req in required_docs:
-        req_lower = req.lower()
-        is_ready = False
-        matched_user_doc = None
+        matched = _find_matching_user_document(req, user_docs)
+        doc_type_key = _infer_doc_type_key(req)
 
-        # Matching heuristics
-        if "aadhaar" in req_lower and any("aadhaar" in dt or "aadhaar" in dn for dt, dn in zip(available_doc_types, available_doc_names)):
-            is_ready = True
-        elif ("bank" in req_lower or "passbook" in req_lower) and any("bank" in dt or "passbook" in dn for dt, dn in zip(available_doc_types, available_doc_names)):
-            is_ready = True
-        elif ("vending" in req_lower or "cov" in req_lower) and any("vending" in dt or "vending" in dn for dt, dn in zip(available_doc_types, available_doc_names)):
-            is_ready = True
-        elif ("land" in req_lower or "khasra" in req_lower or "ror" in req_lower) and any("land" in dt or "land" in dn for dt, dn in zip(available_doc_types, available_doc_names)):
-            is_ready = True
-        elif ("income" in req_lower or "affidavit" in req_lower) and any("income" in dt or "income" in dn for dt, dn in zip(available_doc_types, available_doc_names)):
-            is_ready = True
-        elif ("caste" in req_lower) and any("caste" in dt or "caste" in dn for dt, dn in zip(available_doc_types, available_doc_names)):
-            is_ready = True
-        elif ("ration" in req_lower or "family" in req_lower) and any("ration" in dt or "ration" in dn for dt, dn in zip(available_doc_types, available_doc_names)):
-            is_ready = True
-        elif ("college" in req_lower or "marksheet" in req_lower or "admission" in req_lower) and any("college" in dt or "admission" in dn for dt, dn in zip(available_doc_types, available_doc_names)):
-            is_ready = True
+        if matched:
+            raw_status = (matched.get("status") or "UPLOADED").upper()
+            doc_id = matched.get("id")
+            doc_name = matched.get("doc_name") or req
 
-        if is_ready:
-            ready_count += 1
-            doc_status_list.append({
-                "document_name": req,
-                "status": "READY",
-                "badge": "Verified Demo Document",
-                "notes": "Verified automatically via simulated OCR extraction."
-            })
+            if raw_status in ("VERIFIED", "VERIFIED_DEMO"):
+                ready_count += 1
+                doc_status_list.append({
+                    "document_name": req,
+                    "status": "READY",
+                    "badge": "Verified Demo Document",
+                    "notes": "Verified automatically via simulated OCR extraction.",
+                    "doc_id": doc_id,
+                    "matched_doc_name": doc_name,
+                    "doc_type_key": doc_type_key,
+                    "is_missing": False
+                })
+            else:
+                # User uploaded document (pending verification)
+                uploaded_count += 1
+                doc_status_list.append({
+                    "document_name": req,
+                    "status": "UPLOADED",
+                    "badge": "Uploaded (Pending Verification)",
+                    "notes": "Document uploaded by citizen; awaiting statutory desk verification.",
+                    "doc_id": doc_id,
+                    "matched_doc_name": doc_name,
+                    "doc_type_key": doc_type_key,
+                    "is_missing": False
+                })
         else:
+            # Unavailable document: Must display status as Missing and provide upload option
             doc_status_list.append({
                 "document_name": req,
                 "status": "MISSING",
-                "badge": "Upload or Demo Generate Required",
-                "notes": "Required for formal processing. You can upload a mock file or click 'Generate Demo Document'."
+                "badge": "Missing Document",
+                "notes": "Required document unavailable in your locker. Click 'Upload Document' to add it.",
+                "doc_id": None,
+                "matched_doc_name": None,
+                "doc_type_key": doc_type_key,
+                "is_missing": True
             })
 
     total_required = max(1, len(required_docs))
-    readiness_percentage = round((ready_count / total_required) * 100)
+    satisfied_count = ready_count + uploaded_count
+    missing_count = max(0, total_required - satisfied_count)
+    readiness_percentage = round((satisfied_count / total_required) * 100)
 
     result = {
         "overall_status": "READY_TO_APPLY" if readiness_percentage >= 50 else "DOCUMENTS_NEEDED",
-        "ready_count": ready_count,
+        "ready_count": satisfied_count,
+        "verified_count": ready_count,
+        "uploaded_count": uploaded_count,
+        "missing_count": missing_count,
         "total_required": len(required_docs),
         "readiness_percentage": readiness_percentage,
         "checklist": doc_status_list,
@@ -451,7 +519,7 @@ Respond in JSON format:
 }
 """
 
-    ready_doc_names = [d["document_name"] for d in docs if d["status"] == "READY"]
+    ready_doc_names = [d["document_name"] for d in docs if d.get("status") in ("READY", "UPLOADED")]
 
     user_prompt = f"""
 Scheme Name: {scheme.get('name') if scheme else 'Government Welfare Scheme'}

@@ -3,13 +3,28 @@ JanSetu Demo Documents Routes
 Handles mock document uploads and automatic sample document generation.
 """
 
+import os
+import uuid
+import mimetypes
 import random
+from datetime import datetime
 from typing import Optional
-from fastapi import APIRouter, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Query
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
-from backend.db import get_user_documents, add_user_document, get_user_by_id
+from backend.db import (
+    get_user_documents,
+    add_user_document,
+    get_user_by_id,
+    get_document_by_id,
+    delete_user_document
+)
+from backend.config import UPLOADS_DIR, PROJECT_ROOT
 
 router = APIRouter(prefix="/api/documents", tags=["Demo Documents"])
+
+ALLOWED_EXTENSIONS = {".pdf", ".jpg", ".jpeg", ".png"}
+MAX_FILE_SIZE_BYTES = 15 * 1024 * 1024  # 15 MB
 
 
 class GenerateDemoDocRequest(BaseModel):
@@ -20,12 +35,214 @@ class GenerateDemoDocRequest(BaseModel):
 
 @router.get("/user/{user_id}")
 def list_documents(user_id: int):
-    """Returns all demo documents for a citizen."""
+    """Returns all demo and uploaded documents for a citizen."""
     user = get_user_by_id(user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     docs = get_user_documents(user_id)
     return {"user_id": user_id, "count": len(docs), "documents": docs}
+
+
+@router.get("/{doc_id}")
+def get_single_document(doc_id: int):
+    """Retrieves document record metadata by ID."""
+    doc = get_document_by_id(doc_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    return {"document": doc}
+
+
+@router.get("/{doc_id}/file")
+def view_document_file(doc_id: int, download: bool = Query(False)):
+    """
+    Safely opens or previews an uploaded document, or downloads it.
+    If it's a demo generated document without a stored physical file, returns document metadata JSON.
+    """
+    doc = get_document_by_id(doc_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    file_path = doc.get("file_path") or ""
+    if not file_path:
+        # Demo document without disk file
+        return JSONResponse(
+            status_code=200,
+            content={
+                "is_demo_generated": True,
+                "message": "Demo document with simulated OCR metadata. No binary file stored.",
+                "document": doc
+            }
+        )
+
+    # Resolve actual filesystem path
+    candidate_paths = [
+        UPLOADS_DIR / os.path.basename(file_path),
+        PROJECT_ROOT / file_path,
+        PROJECT_ROOT / "backend" / file_path,
+        PROJECT_ROOT / "database" / file_path
+    ]
+    resolved_path = None
+    for p in candidate_paths:
+        if p.exists() and p.is_file():
+            resolved_path = p
+            break
+
+    if not resolved_path:
+        # File path in DB but file missing from disk
+        return JSONResponse(
+            status_code=200,
+            content={
+                "is_demo_generated": True,
+                "message": "Physical file record not found on disk; rendering simulated proof.",
+                "document": doc
+            }
+        )
+
+    mime_type, _ = mimetypes.guess_type(str(resolved_path))
+    if not mime_type:
+        mime_type = "application/octet-stream"
+
+    filename = os.path.basename(file_path)
+    disposition = "attachment" if download else "inline"
+
+    return FileResponse(
+        path=str(resolved_path),
+        media_type=mime_type,
+        headers={
+            "Content-Disposition": f'{disposition}; filename="{filename}"'
+        }
+    )
+
+
+@router.get("/{doc_id}/download")
+def download_document_file(doc_id: int):
+    """Downloads the document file."""
+    return view_document_file(doc_id, download=True)
+
+
+@router.delete("/{doc_id}")
+def delete_document(doc_id: int, user_id: Optional[int] = Query(None)):
+    """
+    Deletes an uploaded or demo document by ID.
+    Unlinks associated physical file from storage if present.
+    """
+    doc = get_document_by_id(doc_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    if user_id is not None and doc.get("user_id") != user_id:
+        raise HTTPException(status_code=403, detail="Unauthorized to delete this document")
+
+    file_path = delete_user_document(doc_id, user_id=user_id)
+
+    # Safely remove physical file if stored
+    if file_path:
+        for candidate in [
+            UPLOADS_DIR / os.path.basename(file_path),
+            PROJECT_ROOT / file_path
+        ]:
+            try:
+                if candidate.exists() and candidate.is_file():
+                    os.remove(candidate)
+                    break
+            except Exception:
+                pass
+
+    return {
+        "success": True,
+        "message": f"Document '{doc.get('doc_name', 'Document')}' deleted successfully.",
+        "deleted_id": doc_id
+    }
+
+
+@router.post("/upload")
+async def upload_document(
+    user_id: int = Form(...),
+    doc_type: str = Form(...),
+    doc_name: Optional[str] = Form(None),
+    file: UploadFile = File(...)
+):
+    """
+    Accepts document file upload (PDF, JPG, JPEG, PNG), persists file to disk,
+    records status as UPLOADED (Pending Verification), and returns the saved document record.
+    """
+    user = get_user_by_id(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    original_filename = file.filename or "uploaded_document"
+    ext = os.path.splitext(original_filename)[1].lower()
+
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid file format '{ext}'. Only PDF, JPG, JPEG, and PNG files are supported."
+        )
+
+    # Read content and validate size
+    try:
+        content = await file.read()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to read uploaded file: {str(e)}")
+
+    file_size = len(content)
+    if file_size > MAX_FILE_SIZE_BYTES:
+        raise HTTPException(
+            status_code=400,
+            detail="File size exceeds maximum limit of 15MB. Please upload a smaller file."
+        )
+
+    # Ensure uploads directory exists
+    UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Generate unique safe filename
+    safe_basename = "".join(c for c in os.path.basename(original_filename) if c.isalnum() or c in "._- ")
+    unique_filename = f"doc_{uuid.uuid4().hex[:8]}_{safe_basename}"
+    save_path = UPLOADS_DIR / unique_filename
+
+    try:
+        with open(save_path, "wb") as f:
+            f.write(content)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save document to storage: {str(e)}")
+
+    # Display name determination
+    clean_name = (doc_name or "").strip()
+    if not clean_name:
+        category_label = doc_type.replace('_', ' ').title()
+        clean_name = f"{category_label} ({original_filename})"
+
+    # Prepare OCR / verification metadata
+    # NOTE: Uploading a file does NOT mark it as verified automatically.
+    # Verification status reflects the actual status (Pending Verification).
+    ocr_metadata = {
+        "file_name": original_filename,
+        "saved_filename": unique_filename,
+        "content_type": file.content_type or mimetypes.guess_type(original_filename)[0] or "application/octet-stream",
+        "file_size_bytes": file_size,
+        "file_size_formatted": f"{round(file_size / 1024, 1)} KB" if file_size < 1024 * 1024 else f"{round(file_size / (1024 * 1024), 2)} MB",
+        "verification_status": "PENDING_VERIFICATION",
+        "status_description": "Document uploaded successfully. Queued for statutory desk verification.",
+        "extracted_name": user.get("full_name"),
+        "doc_type_detected": doc_type,
+        "uploaded_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    }
+
+    doc_record = add_user_document(
+        user_id=user_id,
+        doc_type=doc_type,
+        doc_name=clean_name,
+        ocr_data=ocr_metadata,
+        file_path=f"uploads/{unique_filename}",
+        status="UPLOADED",
+        file_size=file_size
+    )
+
+    return {
+        "success": True,
+        "message": f"Document '{clean_name}' uploaded successfully. Status: Uploaded (Pending Verification).",
+        "document": doc_record
+    }
 
 
 @router.post("/generate-demo")
@@ -138,41 +355,3 @@ def generate_sample_document_for_user(user_id: int, doc_type: str = "aadhaar", d
     return generate_sample_document(req)
 
 
-@router.post("/upload")
-async def upload_document(
-    user_id: int = Form(...),
-    doc_type: str = Form(...),
-    file: UploadFile = File(...)
-):
-    """
-    Accepts dummy document file upload, simulates OCR verification, and saves demo record.
-    """
-    user = get_user_by_id(user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    file_name = file.filename or "demo_document.pdf"
-
-    # Simulated OCR extraction
-    simulated_ocr = {
-        "file_name": file_name,
-        "content_type": file.content_type,
-        "extracted_name": user.get("full_name"),
-        "ocr_confidence": 98.4,
-        "verification_status": "VERIFIED_DEMO",
-        "doc_type_detected": doc_type
-    }
-
-    doc_record = add_user_document(
-        user_id=user_id,
-        doc_type=doc_type,
-        doc_name=f"{doc_type.replace('_', ' ').title()} - {file_name}",
-        ocr_data=simulated_ocr,
-        file_path=f"uploads/{file_name}"
-    )
-
-    return {
-        "success": True,
-        "message": f"File '{file_name}' received and verified with simulated OCR.",
-        "document": doc_record
-    }

@@ -70,6 +70,9 @@ function setupEventListeners() {
         if (e.key === "Escape") {
             closeAuthModal();
             closeSchemeDetailsModal();
+            closeUploadModal();
+            closeViewDocModal();
+            closeDeleteModal();
             toggleNotificationsModal(false);
             toggleChatbot(false);
         }
@@ -954,50 +957,111 @@ function renderDocumentChecklist(readiness) {
     const container = document.getElementById("docs-checklist-container");
     if (!meter || !container) return;
 
-    const score = readiness?.readiness_percentage !== undefined ? readiness.readiness_percentage : (readiness?.readiness_score || 80);
-    const readyCount = readiness?.ready_count !== undefined ? readiness.ready_count : (readiness?.ready_documents?.length || 2);
-    const totalRequired = readiness?.total_required !== undefined ? readiness.total_required : ((readiness?.checklist?.length) || 3);
-    const missingCount = Math.max(0, totalRequired - readyCount);
+    const score = readiness?.readiness_percentage !== undefined ? readiness.readiness_percentage : 0;
+    const readyCount = readiness?.ready_count !== undefined ? readiness.ready_count : 0;
+    const totalRequired = readiness?.total_required !== undefined ? readiness.total_required : 1;
+    const missingCount = readiness?.missing_count !== undefined ? readiness.missing_count : Math.max(0, totalRequired - readyCount);
 
     meter.innerHTML = `
         <div class="meter-stat">
-            <h4>Document Readiness: ${readiness?.overall_status === 'READY_TO_APPLY' || readiness?.is_ready_to_apply || score >= 50 ? 'Application Ready' : 'Few Proofs Required'}</h4>
-            <p>${readyCount} of ${totalRequired} verified documents in demo locker • ${missingCount > 0 ? `${missingCount} proofs can be generated below` : 'All mandatory proofs satisfied'}</p>
+            <h4>Document Readiness: ${readiness?.overall_status === 'READY_TO_APPLY' || score >= 50 ? 'Application Ready' : 'Few Proofs Required'}</h4>
+            <p>${readyCount} of ${totalRequired} required documents available in citizen locker • ${missingCount > 0 ? `<strong style="color: var(--color-rose);">${missingCount} Missing</strong> (upload required files below)` : '<strong style="color: var(--color-emerald);">All mandatory proofs satisfied</strong>'}</p>
         </div>
-        <div class="meter-score">${score}% Ready</div>
+        <div class="meter-score-wrap">
+            <div class="meter-score">${score}% Ready</div>
+            <div class="meter-progress-track">
+                <div class="meter-progress-fill" style="width: ${Math.min(100, Math.max(0, score))}%;"></div>
+            </div>
+        </div>
     `;
 
-    let allDocs = [];
-    if (readiness?.checklist && readiness.checklist.length > 0) {
-        allDocs = readiness.checklist.map(d => ({
-            name: d.document_name,
-            verified: (d.status || '').toUpperCase() === 'READY',
-            status: d.status,
-            badge: d.badge || (d.status === 'READY' ? 'Verified Demo Document' : 'Action Required'),
-            notes: d.notes || ''
-        }));
-    } else {
-        const readyDocs = (readiness?.ready_documents || [
-            { document_name: "Aadhaar Card (Identity Proof)", status: "AVAILABLE", verified: true },
-            { document_name: "Bank Passbook / Statement", status: "AVAILABLE", verified: true }
-        ]).map(d => ({ name: d.document_name || d.name, verified: true, notes: "Verified via demo locker" }));
-        
-        const missingDocs = (readiness?.missing_documents || [
-            { document_name: "Land Record / Trade Certificate", status: "MISSING", verified: false }
-        ]).map(d => ({ name: d.document_name || d.name, verified: false, notes: "Generate sample proof below" }));
-        
-        allDocs = [...readyDocs, ...missingDocs];
+    const checklist = readiness?.checklist || [];
+    if (checklist.length === 0) {
+        container.innerHTML = `<div class="empty-state-box" style="padding: 20px;"><p>No specific documents required for this scheme.</p></div>`;
+        return;
     }
 
-    container.innerHTML = allDocs.map(d => `
-        <div class="doc-check-item">
-            <div>
-                <strong>${escapeHtml(d.name)}</strong>
-                <div style="font-size: 12px; color: var(--text-muted)">${escapeHtml(d.notes || (d.verified ? 'Verified via Demo Locker OCR' : 'Click quick-generate button below to satisfy this requirement'))}</div>
+    container.innerHTML = checklist.map(d => {
+        const isMissing = d.is_missing || (d.status || '').toUpperCase() === 'MISSING';
+        const isUploaded = (d.status || '').toUpperCase() === 'UPLOADED';
+        const isReady = (d.status || '').toUpperCase() === 'READY' || (d.status || '').toUpperCase() === 'VERIFIED';
+        const docName = d.document_name || "Statutory Document";
+        const docTypeKey = d.doc_type_key || "";
+        const docId = d.doc_id;
+
+        let statusChipHtml = '';
+        let actionBtnHtml = '';
+
+        if (isMissing) {
+            statusChipHtml = `<span class="status-chip missing"><i class="fa-solid fa-triangle-exclamation"></i> Missing</span>`;
+            actionBtnHtml = `
+                <button type="button" class="btn btn-primary btn-sm btn-upload-missing" onclick="openUploadModalForMissing('${escapeHtml(docName)}', '${escapeHtml(docTypeKey)}')">
+                    <i class="fa-solid fa-cloud-arrow-up"></i> Upload Document
+                </button>
+            `;
+        } else if (isUploaded) {
+            statusChipHtml = `<span class="status-chip uploaded"><i class="fa-solid fa-clock"></i> Uploaded (Pending Review)</span>`;
+            actionBtnHtml = `
+                <div style="display: flex; gap: 6px; align-items: center;">
+                    <button type="button" class="btn btn-outline btn-sm" onclick="viewDocument(${docId})">
+                        <i class="fa-regular fa-eye"></i> View
+                    </button>
+                    <button type="button" class="btn btn-outline btn-sm" onclick="openUploadModalForMissing('${escapeHtml(docName)}', '${escapeHtml(docTypeKey)}')">
+                        <i class="fa-solid fa-repeat"></i> Replace
+                    </button>
+                </div>
+            `;
+        } else {
+            statusChipHtml = `<span class="status-chip success"><i class="fa-solid fa-circle-check"></i> Ready</span>`;
+            actionBtnHtml = docId ? `
+                <button type="button" class="btn btn-outline btn-sm" onclick="viewDocument(${docId})">
+                    <i class="fa-regular fa-eye"></i> View
+                </button>
+            ` : '';
+        }
+
+        return `
+            <div class="doc-check-item ${isMissing ? 'item-missing' : (isUploaded ? 'item-uploaded' : 'item-ready')}">
+                <div class="doc-check-details">
+                    <div class="doc-title-row">
+                        <strong class="doc-check-title">${escapeHtml(docName)}</strong>
+                        ${statusChipHtml}
+                    </div>
+                    <div class="doc-notes-row">
+                        ${escapeHtml(d.notes || (isMissing ? 'Required document is unavailable in your locker.' : 'Verified in your citizen locker.'))}
+                    </div>
+                </div>
+                <div class="doc-check-actions">
+                    ${actionBtnHtml}
+                </div>
             </div>
-            <span class="status-chip ${d.verified ? 'success' : 'status-chip unknown'}">${d.verified ? 'Ready' : 'Mock Available'}</span>
-        </div>
-    `).join("");
+        `;
+    }).join("");
+}
+
+function openUploadModalForMissing(docName, docTypeKey) {
+    openUploadModal(docTypeKey, docName);
+}
+
+async function refreshDocumentReadiness() {
+    if (!state.selectedScheme) return;
+    try {
+        const res = await fetch("/api/workflow/audit-documents", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                user_id: state.activeUserId,
+                scheme_id: state.selectedScheme.id
+            })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            state.documentReadiness = data.document_readiness;
+            renderDocumentChecklist(data.document_readiness);
+        }
+    } catch (err) {
+        console.error("Failed to refresh document readiness:", err);
+    }
 }
 
 async function quickGenerateDoc(docType) {
@@ -1275,41 +1339,527 @@ async function loadUserDocuments() {
     }
 }
 
+let currentDocFilter = "all";
+
+function filterDocsView(filterType) {
+    currentDocFilter = filterType;
+    document.querySelectorAll(".summary-pill").forEach(pill => pill.classList.remove("active"));
+    const activePill = document.getElementById(`pill-filter-${filterType}`);
+    if (activePill) activePill.classList.add("active");
+    renderDocumentsPage();
+}
+
+function formatCategoryLabel(cat) {
+    if (!cat) return "Statutory Document";
+    const labels = {
+        "aadhaar": "Aadhaar Card (Identity Proof)",
+        "bank_passbook": "Bank Account Passbook / Statement",
+        "land_record": "Land Ownership Record (Khatauni / Khasra)",
+        "income_certificate": "Income Certificate",
+        "vending_certificate": "Certificate of Vending / Trade Proof",
+        "caste_certificate": "Caste / Category Certificate",
+        "ration_card": "Ration Card / NFSA ID",
+        "educational_certificate": "Educational Marksheet / Fee Receipt",
+        "disability_certificate": "Disability Certificate / UDID",
+        "other": "Other Supporting Proof"
+    };
+    return labels[cat.toLowerCase()] || cat.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+}
+
+function formatDocDate(dateStr) {
+    if (!dateStr) return "Recorded Demo";
+    try {
+        const d = new Date(dateStr.replace(' ', 'T'));
+        if (isNaN(d.getTime())) return dateStr;
+        return d.toLocaleDateString("en-IN", {
+            day: "numeric",
+            month: "short",
+            year: "numeric"
+        });
+    } catch (e) {
+        return dateStr;
+    }
+}
+
+function getFileIconClass(doc) {
+    const ext = (doc.file_path || '').split('.').pop().toLowerCase();
+    if (ext === 'pdf') return 'fa-file-pdf text-danger';
+    if (['jpg', 'jpeg', 'png'].includes(ext)) return 'fa-file-image text-primary';
+    const type = (doc.doc_type || '').toLowerCase();
+    if (type.includes('aadhaar')) return 'fa-id-card text-navy';
+    if (type.includes('bank')) return 'fa-money-check text-success';
+    if (type.includes('land')) return 'fa-mountain-sun text-warning';
+    return 'fa-file-shield text-blue';
+}
+
 function renderDocumentsPage() {
     const container = document.getElementById("user-docs-container");
     if (!container) return;
 
-    if (state.allDocuments.length === 0) {
+    const totalCountEl = document.getElementById("docs-count-total");
+    const verifiedCountEl = document.getElementById("docs-count-verified");
+    const uploadedCountEl = document.getElementById("docs-count-uploaded");
+
+    const total = state.allDocuments.length;
+    const verified = state.allDocuments.filter(d => (d.status || '').toUpperCase().includes('VERIFIED')).length;
+    const uploaded = state.allDocuments.filter(d => (d.status || '').toUpperCase() === 'UPLOADED' || (d.status || '').toUpperCase() === 'PENDING_VERIFICATION').length;
+
+    if (totalCountEl) totalCountEl.textContent = total;
+    if (verifiedCountEl) verifiedCountEl.textContent = verified;
+    if (uploadedCountEl) uploadedCountEl.textContent = uploaded;
+
+    let filtered = state.allDocuments;
+    if (currentDocFilter === "verified") {
+        filtered = state.allDocuments.filter(d => (d.status || '').toUpperCase().includes('VERIFIED'));
+    } else if (currentDocFilter === "uploaded") {
+        filtered = state.allDocuments.filter(d => (d.status || '').toUpperCase() === 'UPLOADED' || (d.status || '').toUpperCase() === 'PENDING_VERIFICATION');
+    }
+
+    if (filtered.length === 0) {
         container.innerHTML = `
-            <div class="empty-state-box" style="grid-column: 1 / -1;">
-                <div class="empty-state-icon"><i class="fa-solid fa-folder-open"></i></div>
-                <h4>No Demo Documents in Locker</h4>
-                <p>Generate pre-verified mock documents to instantly pass document readiness checks.</p>
-                <button class="btn btn-primary btn-sm" onclick="generateAllDemoDocs()">
-                    <i class="fa-solid fa-magic"></i> Auto-Generate Demo Set
-                </button>
-            </div>
+            <tr>
+                <td colspan="5">
+                    <div class="empty-state-box" style="padding: 36px 16px;">
+                        <div class="empty-state-icon"><i class="fa-solid fa-folder-open"></i></div>
+                        <h4>${currentDocFilter === 'all' ? 'No Documents Found in Locker' : `No ${currentDocFilter} documents found`}</h4>
+                        <p>Upload your official identity and statutory proofs (PDF, JPG, PNG) or generate a demo set for instant testing.</p>
+                        <div style="display: flex; gap: 10px; justify-content: center; margin-top: 14px;">
+                            <button type="button" class="btn btn-primary btn-sm" onclick="openUploadModal()">
+                                <i class="fa-solid fa-cloud-arrow-up"></i> Upload Document
+                            </button>
+                            <button type="button" class="btn btn-outline btn-sm" onclick="generateAllDemoDocs()">
+                                <i class="fa-solid fa-magic"></i> Auto-Generate Demo Set
+                            </button>
+                        </div>
+                    </div>
+                </td>
+            </tr>
         `;
         return;
     }
 
-    container.innerHTML = state.allDocuments.map(doc => `
-        <div class="user-doc-card">
-            <div class="doc-type-icon"><i class="fa-solid fa-file-shield"></i></div>
-            <div class="doc-card-info">
-                <strong>${escapeHtml(doc.document_type?.replace('_', ' ').toUpperCase() || 'DOCUMENT')}</strong>
-                <span>Verified: ${doc.verification_status || 'SIMULATED'}</span>
-            </div>
-            <span class="status-chip success">Ready</span>
-        </div>
-    `).join("");
+    container.innerHTML = filtered.map(doc => {
+        const isUploaded = (doc.status || '').toUpperCase() === 'UPLOADED' || (doc.status || '').toUpperCase() === 'PENDING_VERIFICATION';
+        const statusChip = isUploaded
+            ? `<span class="status-chip uploaded"><i class="fa-solid fa-clock"></i> Uploaded (Pending Review)</span>`
+            : `<span class="status-chip success"><i class="fa-solid fa-circle-check"></i> Verified Demo</span>`;
+
+        const categoryFormatted = formatCategoryLabel(doc.doc_type);
+        const dateFormatted = formatDocDate(doc.created_at);
+        const fileNameSnippet = doc.file_path ? doc.file_path.split('/').pop() : 'Verified Locker Proof';
+
+        return `
+            <tr class="doc-table-row" id="doc-row-${doc.id}">
+                <td>
+                    <div class="doc-name-cell">
+                        <div class="doc-icon-mini"><i class="fa-solid ${getFileIconClass(doc)}"></i></div>
+                        <div>
+                            <strong class="doc-primary-name">${escapeHtml(doc.doc_name || 'Document')}</strong>
+                            <div class="doc-filesize-sub">${escapeHtml(fileNameSnippet)}</div>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <span class="category-tag">${escapeHtml(categoryFormatted)}</span>
+                </td>
+                <td>
+                    <span class="date-text"><i class="fa-regular fa-calendar" style="margin-right: 4px; opacity: 0.7;"></i>${escapeHtml(dateFormatted)}</span>
+                </td>
+                <td>
+                    ${statusChip}
+                </td>
+                <td style="text-align: right;">
+                    <div class="doc-actions-inline">
+                        <button type="button" class="btn btn-outline btn-xs" onclick="viewDocument(${doc.id})" title="Preview or inspect document">
+                            <i class="fa-regular fa-eye"></i> View Document
+                        </button>
+                        <button type="button" class="btn btn-outline-danger btn-xs" onclick="confirmDeleteDocument(${doc.id}, '${escapeHtml(doc.doc_name || 'Document')}')" title="Delete from locker">
+                            <i class="fa-regular fa-trash-can"></i> Delete
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join("");
 }
 
-async function handleDocUpload(event) {
+// ==============================================================
+// Modal Controls: Upload, View, Delete
+// ==============================================================
+
+function handleModalOverlayClick(event, modalId) {
+    if (event.target && event.target.id === modalId) {
+        if (modalId === 'upload-doc-modal') closeUploadModal();
+        else if (modalId === 'view-doc-modal') closeViewDocModal();
+        else if (modalId === 'delete-doc-modal') closeDeleteModal();
+    }
+}
+
+function openUploadModal(categoryHint = "", displayNameHint = "") {
+    const modal = document.getElementById("upload-doc-modal");
+    if (!modal) return;
+
+    document.getElementById("form-upload-document")?.reset();
+    clearSelectedFile();
+
+    const errBox = document.getElementById("upload-modal-error");
+    const succBox = document.getElementById("upload-modal-success");
+    if (errBox) errBox.style.display = "none";
+    if (succBox) succBox.style.display = "none";
+
+    const catSelect = document.getElementById("upload-modal-category");
+    const nameInput = document.getElementById("upload-modal-docname");
+
+    if (catSelect && categoryHint) {
+        catSelect.value = categoryHint;
+    }
+    if (nameInput) {
+        nameInput.value = displayNameHint || (categoryHint ? formatCategoryLabel(categoryHint) : "");
+        nameInput.setAttribute("data-auto", displayNameHint ? "false" : "true");
+    }
+
+    modal.style.display = "flex";
+}
+
+function closeUploadModal() {
+    const modal = document.getElementById("upload-doc-modal");
+    if (modal) modal.style.display = "none";
+    clearSelectedFile();
+}
+
+function handleUploadCategoryChange() {
+    const cat = document.getElementById("upload-modal-category")?.value;
+    const nameInput = document.getElementById("upload-modal-docname");
+    if (cat && nameInput && (!nameInput.value.trim() || nameInput.getAttribute("data-auto") === "true")) {
+        nameInput.value = formatCategoryLabel(cat);
+        nameInput.setAttribute("data-auto", "true");
+    }
+}
+
+function handleFileSelection(event) {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+
+    const dropTitle = document.getElementById("drop-zone-title");
+    const dropDesc = document.getElementById("drop-zone-desc");
+    const dropPreview = document.getElementById("drop-zone-preview");
+    const fileNameEl = document.getElementById("drop-zone-filename");
+    const fileSizeEl = document.getElementById("drop-zone-filesize");
+    const nameInput = document.getElementById("upload-modal-docname");
+
+    const sizeFormatted = file.size < 1024 * 1024
+        ? `${(file.size / 1024).toFixed(1)} KB`
+        : `${(file.size / (1024 * 1024)).toFixed(2)} MB`;
+
+    if (dropTitle) dropTitle.style.display = "none";
+    if (dropDesc) dropDesc.style.display = "none";
+    if (dropPreview) dropPreview.style.display = "flex";
+    if (fileNameEl) fileNameEl.innerHTML = `<i class="fa-solid fa-file"></i> ${escapeHtml(file.name)}`;
+    if (fileSizeEl) fileSizeEl.textContent = sizeFormatted;
+
+    // Suggest clean document display name if still blank or auto
+    if (nameInput && (!nameInput.value.trim() || nameInput.getAttribute("data-auto") === "true")) {
+        const baseName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
+        nameInput.value = baseName;
+        nameInput.setAttribute("data-auto", "false");
+    }
+}
+
+function clearSelectedFile(event) {
+    if (event) {
+        event.stopPropagation();
+        event.preventDefault();
+    }
+    const fileInput = document.getElementById("upload-modal-file");
+    if (fileInput) fileInput.value = "";
+
+    const dropTitle = document.getElementById("drop-zone-title");
+    const dropDesc = document.getElementById("drop-zone-desc");
+    const dropPreview = document.getElementById("drop-zone-preview");
+
+    if (dropTitle) dropTitle.style.display = "block";
+    if (dropDesc) dropDesc.style.display = "block";
+    if (dropPreview) dropPreview.style.display = "none";
+}
+
+async function handleUploadDocumentSubmit(event) {
     event.preventDefault();
-    const cat = document.getElementById("upload-doc-category").value;
-    await quickGenerateDoc(cat);
-    renderDocumentsPage();
+    const errBox = document.getElementById("upload-modal-error");
+    const succBox = document.getElementById("upload-modal-success");
+    const submitBtn = document.getElementById("btn-submit-upload");
+    const submitText = document.getElementById("btn-upload-text");
+
+    if (errBox) errBox.style.display = "none";
+    if (succBox) succBox.style.display = "none";
+
+    const category = document.getElementById("upload-modal-category")?.value;
+    const displayName = document.getElementById("upload-modal-docname")?.value.trim();
+    const fileInput = document.getElementById("upload-modal-file");
+    const file = fileInput?.files && fileInput.files[0];
+
+    if (!category) {
+        showUploadError("Please select a valid document category.");
+        return;
+    }
+    if (!displayName) {
+        showUploadError("Please specify a Document Display Name.");
+        return;
+    }
+    if (!file) {
+        showUploadError("Please select a document file (PDF, JPG, JPEG, or PNG).");
+        return;
+    }
+
+    const validExts = [".pdf", ".jpg", ".jpeg", ".png"];
+    const ext = "." + file.name.split('.').pop().toLowerCase();
+    if (!validExts.includes(ext)) {
+        showUploadError(`Invalid file format '${ext}'. Only PDF, JPG, JPEG, and PNG files are supported.`);
+        return;
+    }
+
+    if (file.size > 15 * 1024 * 1024) {
+        showUploadError("File size exceeds 15MB limit. Please upload a smaller file.");
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append("user_id", state.activeUserId);
+    formData.append("doc_type", category);
+    formData.append("doc_name", displayName);
+    formData.append("file", file);
+
+    if (submitBtn) submitBtn.disabled = true;
+    if (submitText) submitText.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Uploading...`;
+
+    try {
+        const res = await fetch("/api/documents/upload", {
+            method: "POST",
+            body: formData
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+            throw new Error(data.detail || "Failed to upload document");
+        }
+
+        showToast(`Document '${displayName}' uploaded successfully!`, "success");
+        closeUploadModal();
+
+        // 100% Synchronization: Refresh DB records, Documents page, Document Readiness, and metrics
+        await loadUserDocuments();
+        renderDocumentsPage();
+        await refreshDocumentReadiness();
+        updateDashboardMetrics();
+
+    } catch (err) {
+        console.error("Upload error:", err);
+        showUploadError(err.message || "Upload failed. Please check backend connection.");
+    } finally {
+        if (submitBtn) submitBtn.disabled = false;
+        if (submitText) submitText.textContent = "Upload Document";
+    }
+}
+
+function showUploadError(msg) {
+    const errBox = document.getElementById("upload-modal-error");
+    if (errBox) {
+        errBox.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i> <span>${escapeHtml(msg)}</span>`;
+        errBox.style.display = "flex";
+    }
+    showToast(msg, "error");
+}
+
+async function viewDocument(docId) {
+    let doc = state.allDocuments.find(d => d.id === docId);
+    if (!doc) {
+        try {
+            const res = await fetch(`/api/documents/${docId}`);
+            const data = await res.json();
+            doc = data.document;
+        } catch (e) {
+            console.error(e);
+        }
+    }
+    if (!doc) {
+        showToast("Document details not found", "error");
+        return;
+    }
+
+    const modal = document.getElementById("view-doc-modal");
+    const titleEl = document.getElementById("view-doc-title");
+    const tagsEl = document.getElementById("view-doc-tags");
+    const previewArea = document.getElementById("view-doc-preview-area");
+    const metaEl = document.getElementById("view-doc-metadata");
+    const btnDownload = document.getElementById("btn-view-doc-download");
+    const btnOpen = document.getElementById("btn-view-doc-open");
+
+    if (titleEl) titleEl.textContent = doc.doc_name || "Official Document";
+
+    const isUploaded = (doc.status || '').toUpperCase() === 'UPLOADED' || (doc.status || '').toUpperCase() === 'PENDING_VERIFICATION';
+    const categoryLabel = formatCategoryLabel(doc.doc_type);
+
+    if (tagsEl) {
+        tagsEl.innerHTML = `
+            <span class="category-tag">${escapeHtml(categoryLabel)}</span>
+            <span class="status-chip ${isUploaded ? 'uploaded' : 'success'}">${isUploaded ? 'Uploaded (Pending Review)' : 'Verified Demo'}</span>
+            <span class="date-tag"><i class="fa-regular fa-calendar"></i> ${formatDocDate(doc.created_at)}</span>
+        `;
+    }
+
+    const hasPhysicalFile = !!doc.file_path;
+    const fileUrl = `/api/documents/${doc.id}/file`;
+    const downloadUrl = `/api/documents/${doc.id}/download`;
+
+    if (btnDownload) {
+        if (hasPhysicalFile) {
+            btnDownload.href = downloadUrl;
+            btnDownload.style.display = "inline-flex";
+        } else {
+            btnDownload.style.display = "none";
+        }
+    }
+
+    if (btnOpen) {
+        if (hasPhysicalFile) {
+            btnOpen.href = fileUrl;
+            btnOpen.style.display = "inline-flex";
+        } else {
+            btnOpen.style.display = "none";
+        }
+    }
+
+    // Render Preview
+    if (previewArea) {
+        const filePath = (doc.file_path || '').toLowerCase();
+        if (filePath.endsWith('.png') || filePath.endsWith('.jpg') || filePath.endsWith('.jpeg')) {
+            previewArea.innerHTML = `
+                <div class="image-preview-wrapper">
+                    <img src="${fileUrl}" alt="${escapeHtml(doc.doc_name)}" class="preview-img-element" onerror="this.onerror=null; this.src='/static/placeholder-doc.svg';" />
+                </div>
+            `;
+        } else if (filePath.endsWith('.pdf')) {
+            previewArea.innerHTML = `
+                <div class="pdf-preview-wrapper">
+                    <iframe src="${fileUrl}#toolbar=1" class="preview-iframe-element" title="PDF Document Preview"></iframe>
+                </div>
+            `;
+        } else {
+            // Simulated Official Certificate for demo records
+            const ocr = doc.verified_ocr_data || {};
+            previewArea.innerHTML = `
+                <div class="demo-certificate-preview">
+                    <div class="cert-header">
+                        <div class="cert-emblem"><i class="fa-solid fa-landmark-flag"></i></div>
+                        <div class="cert-title">
+                            <h4>GOVERNMENT STATUTORY DEMO RECORD</h4>
+                            <span>${escapeHtml(categoryLabel.toUpperCase())}</span>
+                        </div>
+                        <div class="cert-seal"><i class="fa-solid fa-stamp"></i> OFFICIAL DEMO SEAL</div>
+                    </div>
+                    <div class="cert-body">
+                        <div class="cert-field-row">
+                            <span class="cert-label">Document Display Name:</span>
+                            <strong class="cert-value">${escapeHtml(doc.doc_name)}</strong>
+                        </div>
+                        <div class="cert-field-row">
+                            <span class="cert-label">Citizen / Beneficiary:</span>
+                            <strong class="cert-value">${escapeHtml(ocr.holder_name || ocr.applicant_name || ocr.vendor_name || ocr.owner_name || state.currentUser?.full_name || 'Citizen')}</strong>
+                        </div>
+                        <div class="cert-field-row">
+                            <span class="cert-label">Certificate / Identification No:</span>
+                            <strong class="cert-value cert-code">${escapeHtml(ocr.aadhaar_masked || ocr.cov_number || ocr.cert_id || ocr.khasra_no || ocr.account_masked || `JS-DOC-${doc.id}`)}</strong>
+                        </div>
+                        <div class="cert-field-row">
+                            <span class="cert-label">Verification Status:</span>
+                            <span class="cert-status-badge ${isUploaded ? 'pending' : 'verified'}">${isUploaded ? 'UPLOADED (PENDING REVIEW)' : 'STATUTORILY VERIFIED'}</span>
+                        </div>
+                    </div>
+                    <div class="cert-footer">
+                        <span>Persisted in JanSetu SQLite Database • Synchronized across Documents and Document Readiness Agent</span>
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+    // Metadata Grid
+    if (metaEl) {
+        const ocr = doc.verified_ocr_data || {};
+        let extraFields = '';
+        Object.entries(ocr).forEach(([k, v]) => {
+            if (typeof v !== 'object' && v !== null && k !== 'file_name' && k !== 'verification_status' && k !== 'saved_filename') {
+                const label = k.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                extraFields += `<div class="meta-item"><span>${escapeHtml(label)}:</span> <strong>${escapeHtml(String(v))}</strong></div>`;
+            }
+        });
+
+        metaEl.innerHTML = `
+            <div class="metadata-grid">
+                <div class="meta-item"><span>Document ID:</span> <strong>#${doc.id}</strong></div>
+                <div class="meta-item"><span>Category:</span> <strong>${escapeHtml(categoryLabel)}</strong></div>
+                <div class="meta-item"><span>Status:</span> <strong>${isUploaded ? 'Uploaded (In Review)' : 'Verified Demo'}</strong></div>
+                <div class="meta-item"><span>Created Date:</span> <strong>${formatDocDate(doc.created_at)}</strong></div>
+                ${extraFields}
+            </div>
+        `;
+    }
+
+    if (modal) modal.style.display = "flex";
+}
+
+function closeViewDocModal() {
+    const modal = document.getElementById("view-doc-modal");
+    if (modal) modal.style.display = "none";
+    const previewArea = document.getElementById("view-doc-preview-area");
+    if (previewArea) previewArea.innerHTML = "";
+}
+
+function confirmDeleteDocument(docId, docName) {
+    state.documentToDelete = { id: docId, name: docName };
+    const modal = document.getElementById("delete-doc-modal");
+    const nameTarget = document.getElementById("delete-doc-name-target");
+    if (nameTarget) nameTarget.textContent = `"${docName}"`;
+    if (modal) modal.style.display = "flex";
+}
+
+function closeDeleteModal() {
+    const modal = document.getElementById("delete-doc-modal");
+    if (modal) modal.style.display = "none";
+    state.documentToDelete = null;
+}
+
+async function executeDeleteDocument() {
+    if (!state.documentToDelete || !state.documentToDelete.id) return;
+    const docId = state.documentToDelete.id;
+    const docName = state.documentToDelete.name;
+    const btn = document.getElementById("btn-confirm-delete");
+
+    if (btn) btn.disabled = true;
+
+    try {
+        const res = await fetch(`/api/documents/${docId}?user_id=${state.activeUserId}`, {
+            method: "DELETE"
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            throw new Error(data.detail || "Failed to delete document");
+        }
+
+        showToast(`Document '${docName}' deleted from locker.`, "success");
+        closeDeleteModal();
+
+        // 100% Synchronization: Refresh DB records, Documents page, Document Readiness, and metrics
+        await loadUserDocuments();
+        renderDocumentsPage();
+        await refreshDocumentReadiness();
+        updateDashboardMetrics();
+
+    } catch (err) {
+        console.error("Delete error:", err);
+        showToast(err.message || "Failed to delete document", "error");
+    } finally {
+        if (btn) btn.disabled = false;
+    }
 }
 
 async function loadNotifications() {
