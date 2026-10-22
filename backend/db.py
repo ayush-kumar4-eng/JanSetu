@@ -75,9 +75,28 @@ def get_user_by_id(user_id: int) -> Optional[Dict[str, Any]]:
 
 
 def update_citizen_profile(user_id: int, profile_data: Dict[str, Any]) -> bool:
-    """Updates or inserts a citizen profile for a given user."""
+    """Updates or inserts a citizen profile for a given user, including personal user table fields."""
     with get_db_connection() as conn:
         cursor = conn.cursor()
+
+        # Update users table if personal or geographical fields are provided
+        user_field_map = {
+            "full_name": profile_data.get("full_name"),
+            "email": profile_data.get("email"),
+            "phone": profile_data.get("phone"),
+            "state": profile_data.get("state"),
+            "district": profile_data.get("district")
+        }
+        user_updates = []
+        user_params = []
+        for field, val in user_field_map.items():
+            if val is not None:
+                user_updates.append(f"{field} = ?")
+                user_params.append(val)
+        if user_updates:
+            user_params.append(user_id)
+            cursor.execute(f"UPDATE users SET {', '.join(user_updates)} WHERE id = ?", user_params)
+
         raw_json = json.dumps(profile_data.get("raw_attributes", {}))
         cursor.execute("""
             INSERT INTO citizen_profiles (
@@ -118,6 +137,31 @@ def update_citizen_profile(user_id: int, profile_data: Dict[str, Any]) -> bool:
         return True
 
 
+def update_user_language(user_id: int, language: str) -> bool:
+    """Persists user's preferred language in profile raw_attributes."""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT raw_attributes_json FROM citizen_profiles WHERE user_id = ?", (user_id,))
+        row = cursor.fetchone()
+        raw = {}
+        if row and row["raw_attributes_json"]:
+            try:
+                raw = json.loads(row["raw_attributes_json"])
+            except Exception:
+                raw = {}
+        raw["preferred_language"] = language
+        cursor.execute("""
+            INSERT INTO citizen_profiles (user_id, raw_attributes_json, updated_at)
+            VALUES (?, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(user_id) DO UPDATE SET
+                raw_attributes_json = excluded.raw_attributes_json,
+                updated_at = CURRENT_TIMESTAMP
+        """, (user_id, json.dumps(raw)))
+        conn.commit()
+        return True
+
+
+
 # ==========================================
 # Schemes CRUD
 # ==========================================
@@ -142,15 +186,23 @@ def get_all_schemes(category: Optional[str] = None) -> List[Dict[str, Any]]:
                 item["required_documents"] = json.loads(item["required_documents_json"])
             except Exception:
                 item["required_documents"] = []
+            item["scheme_id"] = item.get("id")
             schemes.append(item)
         return schemes
 
 
-def get_scheme_by_id(scheme_id: int) -> Optional[Dict[str, Any]]:
+def get_scheme_by_id(scheme_id: Any) -> Optional[Dict[str, Any]]:
     """Fetches single scheme by ID."""
+    if scheme_id is None:
+        return None
+    try:
+        scheme_id_int = int(scheme_id)
+    except (ValueError, TypeError):
+        return None
+
     with get_db_connection() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM schemes WHERE id = ?", (scheme_id,))
+        cursor.execute("SELECT * FROM schemes WHERE id = ?", (scheme_id_int,))
         row = cursor.fetchone()
         if not row:
             return None
@@ -163,6 +215,7 @@ def get_scheme_by_id(scheme_id: int) -> Optional[Dict[str, Any]]:
             item["required_documents"] = json.loads(item["required_documents_json"])
         except Exception:
             item["required_documents"] = []
+        item["scheme_id"] = item.get("id")
         return item
 
 
@@ -183,6 +236,7 @@ def get_scheme_by_code(code: str) -> Optional[Dict[str, Any]]:
             item["required_documents"] = json.loads(item["required_documents_json"])
         except Exception:
             item["required_documents"] = []
+        item["scheme_id"] = item.get("id")
         return item
 
 
@@ -209,14 +263,21 @@ def get_user_documents(user_id: int) -> List[Dict[str, Any]]:
         return docs
 
 
-def add_user_document(user_id: int, doc_type: str, doc_name: str, ocr_data: Dict[str, Any], file_path: str = "") -> Dict[str, Any]:
-    """Adds a new demo document record for a citizen."""
+def add_user_document(
+    user_id: int,
+    doc_type: str,
+    doc_name: str,
+    ocr_data: Dict[str, Any],
+    file_path: str = "",
+    status: str = "VERIFIED_DEMO"
+) -> Dict[str, Any]:
+    """Adds a new document record for a citizen with the given status."""
     with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("""
             INSERT INTO user_documents (user_id, doc_type, doc_name, file_path, status, verified_ocr_data_json)
-            VALUES (?, ?, ?, ?, 'VERIFIED_DEMO', ?)
-        """, (user_id, doc_type, doc_name, file_path, json.dumps(ocr_data)))
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (user_id, doc_type, doc_name, file_path, status, json.dumps(ocr_data)))
         doc_id = cursor.lastrowid
         conn.commit()
         return {
@@ -224,9 +285,22 @@ def add_user_document(user_id: int, doc_type: str, doc_name: str, ocr_data: Dict
             "user_id": user_id,
             "doc_type": doc_type,
             "doc_name": doc_name,
-            "status": "VERIFIED_DEMO",
-            "verified_ocr_data": ocr_data
+            "status": status,
+            "verified_ocr_data": ocr_data,
+            "file_path": file_path,
+            "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
+
+
+def delete_user_document(doc_id: int, user_id: int) -> bool:
+    """Deletes a specific document belonging to a user. Returns True if deleted."""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            DELETE FROM user_documents WHERE id = ? AND user_id = ?
+        """, (doc_id, user_id))
+        conn.commit()
+        return cursor.rowcount > 0
 
 
 # ==========================================
@@ -468,18 +542,19 @@ def create_citizen_user(
 
     p_data = profile_data or {}
     update_citizen_profile(user_id, {
-        "age": p_data.get("age", 30),
-        "gender": p_data.get("gender", "Male"),
-        "occupation": p_data.get("occupation", "Worker"),
-        "annual_income": p_data.get("annual_income", 120000),
-        "social_category": p_data.get("social_category", "General"),
-        "marital_status": p_data.get("marital_status", "Single"),
-        "is_differently_abled": p_data.get("is_differently_abled", False),
-        "land_ownership_hectares": p_data.get("land_ownership_hectares", 0.0),
-        "residence_area": p_data.get("residence_area", "Urban"),
-        "family_members_count": p_data.get("family_members_count", 3),
-        "is_bpl": p_data.get("is_bpl", False),
+        "age": p_data.get("age") if p_data.get("age") is not None else 30,
+        "gender": p_data.get("gender") or "Other",
+        "occupation": p_data.get("occupation") or "Citizen",
+        "annual_income": p_data.get("annual_income") if p_data.get("annual_income") is not None else 0.0,
+        "social_category": p_data.get("social_category") or "General",
+        "marital_status": p_data.get("marital_status") or "Single",
+        "is_differently_abled": bool(p_data.get("is_differently_abled")),
+        "land_ownership_hectares": p_data.get("land_ownership_hectares") if p_data.get("land_ownership_hectares") is not None else 0.0,
+        "residence_area": p_data.get("residence_area") or "Urban",
+        "family_members_count": p_data.get("family_members_count") if p_data.get("family_members_count") is not None else 1,
+        "is_bpl": bool(p_data.get("is_bpl")),
         "raw_attributes": p_data.get("raw_attributes", {})
     })
     return get_user_by_id(user_id)
+
 

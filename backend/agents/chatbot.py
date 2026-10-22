@@ -13,11 +13,51 @@ from backend.vector_search import search_schemes
 logger = logging.getLogger("JanSetu.Chatbot")
 
 
-def handle_chat_message(session_id: str, message: str, user_id: Optional[int] = None) -> Dict[str, Any]:
+LANGUAGE_PROMPTS = {
+    "en": "Respond in clear, accessible English.",
+    "hi": "Respond entirely in Hindi (हिंदी). Maintain a polite, respectful tone (आप). Preserve official scheme names (e.g. PM-KISAN, PM SVANidhi, PMAY-G), official ministry names, monetary figures (₹), and official portal URLs accurately in their standard form.",
+    "mr": "Respond entirely in Marathi (मराठी). Maintain a polite, respectful tone. Preserve official scheme names (e.g. PM-KISAN, PM SVANidhi, PMAY-G), monetary figures (₹), and official portal URLs accurately in their standard form.",
+    "bn": "Respond entirely in Bengali (বাংলা). Maintain a polite, respectful tone. Preserve official scheme names (e.g. PM-KISAN, PM SVANidhi, PMAY-G), monetary figures (₹), and official portal URLs accurately in their standard form.",
+    "ta": "Respond entirely in Tamil (தமிழ்). Maintain a polite, respectful tone. Preserve official scheme names (e.g. PM-KISAN, PM SVANidhi, PMAY-G), monetary figures (₹), and official portal URLs accurately in their standard form."
+}
+
+SUGGESTED_PROMPTS_BY_LANG = {
+    "en": [
+        "What documents do I need to prepare?",
+        "Am I eligible based on my income?",
+        "How do I start my application draft?"
+    ],
+    "hi": [
+        "मुझे कौन से दस्तावेज़ तैयार करने होंगे?",
+        "क्या मैं अपनी आय के आधार पर पात्र हूँ?",
+        "आवेदन का मसौदा कैसे तैयार करें?"
+    ],
+    "mr": [
+        "मला कोणती कागदपत्रे तयार करावी लागतील?",
+        "मी माझ्या उत्पन्नानुसार पात्र आहे का?",
+        "माझा अर्ज कसा तयार करावा?"
+    ],
+    "bn": [
+        "আমার কোন কোন নথি প্রস্তুত করতে হবে?",
+        "আমি কি আমার আয়ের ভিত্তিতে যোগ্য?",
+        "আবেদনের খসড়া কীভাবে শুরু করব?"
+    ],
+    "ta": [
+        "நான் என்ன ஆவணங்களை தயார் செய்ய வேண்டும்?",
+        "என் வருமானத்தின் அடிப்படையில் நான் தகுதியுடையவரா?",
+        "விண்ணப்ப வரைவை எவ்வாறு தொடங்குவது?"
+    ]
+}
+
+
+def handle_chat_message(session_id: str, message: str, user_id: Optional[int] = None, language: str = "en") -> Dict[str, Any]:
     """
-    Processes user query using Qdrant semantic retrieval and conversational LLM response.
+    Processes user query using Qdrant semantic retrieval and conversational LLM response in chosen language.
     """
-    logger.info(f"Chat message received for session '{session_id}': {message[:60]}...")
+    logger.info(f"Chat message received for session '{session_id}' [lang={language}]: {message[:60]}...")
+
+    lang_code = language if language in LANGUAGE_PROMPTS else "en"
+    lang_instruction = LANGUAGE_PROMPTS[lang_code]
 
     # 1. Fetch user context if user_id is provided
     user_context = ""
@@ -62,7 +102,8 @@ You are "JanSetu Mitra" (जनसेतु मित्र), an empathetic, dee
 Your mission is to guide Indian citizens through government welfare schemes, explain eligibility criteria,
 detail necessary documents, and assist with application navigation.
 
-Tone Guidelines:
+Language & Tone Guidelines:
+- {lang_instruction}
 - Respectful, encouraging, culturally aware, and crystal clear.
 - Avoid bureaucratic legalese; explain terms in simple, practical language.
 - Mention specific scheme names, monetary amounts, and official portals when applicable.
@@ -94,19 +135,17 @@ Citizen's Current Message:
         "assistant",
         assistant_reply,
         user_id=user_id,
-        metadata={"cited_schemes": [s["code"] for s in retrieved_schemes]}
+        metadata={"cited_schemes": [s["code"] for s in retrieved_schemes], "language": lang_code}
     )
 
     # 7. Formulate suggested follow-up questions
-    suggested_prompts = [
-        "What documents do I need to prepare?",
-        "Am I eligible based on my income?",
-        "How do I start my application draft?"
-    ]
+    suggested_prompts = SUGGESTED_PROMPTS_BY_LANG.get(lang_code, SUGGESTED_PROMPTS_BY_LANG["en"])
 
     return {
         "reply": assistant_reply,
         "cited_schemes": retrieved_schemes,
         "suggested_prompts": suggested_prompts,
-        "session_id": session_id
+        "session_id": session_id,
+        "language": lang_code
     }
+

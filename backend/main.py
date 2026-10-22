@@ -95,4 +95,11 @@ if FRONTEND_DIR.exists():
 if __name__ == "__main__":
     import uvicorn
     logger.info(f"Starting JanSetu server at http://{HOST}:{PORT}")
-    uvicorn.run("backend.main:app", host=HOST, port=PORT, reload=True)
+    uvicorn.run(
+        "backend.main:app",
+        host=HOST,
+        port=PORT,
+        reload=True,
+        reload_dirs=[str(PROJECT_ROOT / "backend"), str(PROJECT_ROOT / "frontend")],
+        reload_excludes=["*qdrant_storage*", "*.db*", "*uploads*"]
+    )

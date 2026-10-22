@@ -90,7 +90,11 @@ def get_qdrant_client() -> QdrantClient:
         _qdrant_client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY if QDRANT_API_KEY else None)
     else:
         logger.info(f"Connecting to local Qdrant storage at {QDRANT_LOCAL_DIR}")
-        _qdrant_client = QdrantClient(path=str(QDRANT_LOCAL_DIR))
+        try:
+            _qdrant_client = QdrantClient(path=str(QDRANT_LOCAL_DIR))
+        except Exception as e:
+            logger.warning(f"Could not open local Qdrant storage folder ({e}). Falling back to in-memory Qdrant instance.")
+            _qdrant_client = QdrantClient(":memory:")
 
     return _qdrant_client
 
@@ -222,8 +226,10 @@ def search_schemes(query: str, limit: int = 5, category: Optional[str] = None) -
             # Boost score for realistic presentation
             normalized_score = min(0.88, normalized_score + 0.35)
 
+        scheme_id_val = payload.get("scheme_id") or payload.get("id")
         results.append({
-            "scheme_id": payload.get("scheme_id"),
+            "id": scheme_id_val,
+            "scheme_id": scheme_id_val,
             "code": payload.get("code"),
             "name": payload.get("name"),
             "name_hindi": payload.get("name_hindi"),

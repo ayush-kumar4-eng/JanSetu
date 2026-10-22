@@ -111,7 +111,7 @@ def scheme_matcher_agent(state: WorkflowState) -> Dict[str, Any]:
                 break
 
     system_prompt = """
-You are the Scheme Matcher Agent for Sahayak.
+You are the Scheme Matcher Agent for JanSetu.
 Given a citizen's profile and top candidate government schemes from semantic search,
 evaluate each candidate and select the top 2-3 best matching schemes.
 For each recommended scheme, generate:
@@ -169,6 +169,8 @@ Candidate Schemes:
         if scheme_id and scheme_id not in seen_ids:
             full_scheme = get_scheme_by_id(scheme_id)
             if full_scheme:
+                full_scheme["id"] = full_scheme.get("id") or scheme_id
+                full_scheme["scheme_id"] = full_scheme.get("scheme_id") or full_scheme["id"]
                 full_scheme["is_recommended"] = True
                 full_scheme["match_score"] = r.get("match_score", 92)
                 full_scheme["match_percentage"] = f"{int(r.get('match_score', 92))}%"
@@ -180,33 +182,42 @@ Candidate Schemes:
     # Ensure at least 2 recommended schemes
     if len(final_recs) < 2 and candidates:
         for c in candidates:
-            if c["scheme_id"] not in seen_ids:
-                c["is_recommended"] = True
-                c["match_score"] = c.get("match_score", 85)
-                c["match_percentage"] = f"{int(c.get('match_score', 85))}%"
-                c["match_rationale"] = "Strong candidate identified from semantic alignment with your profile category."
-                c["key_highlight"] = c.get("benefits", "")[:90]
-                final_recs.append(c)
-                seen_ids.add(c["scheme_id"])
+            sid = c.get("scheme_id") or c.get("id")
+            if sid not in seen_ids:
+                full = get_scheme_by_id(sid) or dict(c)
+                full["id"] = sid
+                full["scheme_id"] = sid
+                full["is_recommended"] = True
+                full["match_score"] = c.get("match_score", 85)
+                full["match_percentage"] = f"{int(c.get('match_score', 85))}%"
+                full["match_rationale"] = "Strong candidate identified from semantic alignment with your profile category."
+                full["key_highlight"] = c.get("benefits", "")[:90]
+                final_recs.append(full)
+                seen_ids.add(sid)
                 if len(final_recs) >= 3:
                     break
 
     # Build complete list of 6-7 results, tagging recommended vs other relevant matches
     all_results = []
     for r in final_recs[:3]:
+        r["id"] = r.get("id") or r.get("scheme_id")
+        r["scheme_id"] = r.get("scheme_id") or r.get("id")
         r["is_recommended"] = True
         all_results.append(r)
 
     for c in candidates:
-        if c["scheme_id"] not in seen_ids:
-            full = get_scheme_by_id(c["scheme_id"]) or c
+        sid = c.get("scheme_id") or c.get("id")
+        if sid not in seen_ids:
+            full = get_scheme_by_id(sid) or dict(c)
+            full["id"] = sid
+            full["scheme_id"] = sid
             full["is_recommended"] = False
             full["match_score"] = c.get("match_score", 72)
             full["match_percentage"] = f"{int(c.get('match_score', 72))}%"
             full["match_rationale"] = "Relevant welfare scheme matching your sector and geographic applicability."
             full["key_highlight"] = full.get("benefits", "")[:90]
             all_results.append(full)
-            seen_ids.add(c["scheme_id"])
+            seen_ids.add(sid)
             if len(all_results) >= 7:
                 break
 
@@ -226,8 +237,25 @@ def eligibility_assessor_agent(state: WorkflowState) -> Dict[str, Any]:
     scheme = state.get("selected_scheme")
     if not scheme and state.get("selected_scheme_id"):
         scheme = get_scheme_by_id(state["selected_scheme_id"])
+    if not scheme:
+        recs = state.get("recommendations", [])
+        if recs:
+            scheme = recs[0]
+    if not scheme:
+        from backend.db import get_all_schemes
+        all_s = get_all_schemes()
+        scheme = all_s[0] if all_s else None
+
+    if scheme:
+        state["selected_scheme"] = scheme
+        state["selected_scheme_id"] = scheme.get("id") or scheme.get("scheme_id")
 
     profile = state.get("user_profile", {})
+    if not profile and state.get("user_id"):
+        profile = get_user_by_id(state["user_id"]) or {}
+    if not profile:
+        profile = get_user_by_id(1) or {}
+
     if not scheme:
         return {"error": "No scheme selected for eligibility assessment."}
 
@@ -342,6 +370,18 @@ def document_readiness_agent(state: WorkflowState) -> Dict[str, Any]:
     scheme = state.get("selected_scheme")
     if not scheme and state.get("selected_scheme_id"):
         scheme = get_scheme_by_id(state["selected_scheme_id"])
+    if not scheme:
+        recs = state.get("recommendations", [])
+        if recs:
+            scheme = recs[0]
+    if not scheme:
+        from backend.db import get_all_schemes
+        all_s = get_all_schemes()
+        scheme = all_s[0] if all_s else None
+
+    if scheme:
+        state["selected_scheme"] = scheme
+        state["selected_scheme_id"] = scheme.get("id") or scheme.get("scheme_id")
 
     user_id = state.get("user_id", 1)
     user_docs = get_user_documents(user_id)
@@ -419,8 +459,24 @@ def application_drafter_agent(state: WorkflowState) -> Dict[str, Any]:
     scheme = state.get("selected_scheme")
     if not scheme and state.get("selected_scheme_id"):
         scheme = get_scheme_by_id(state["selected_scheme_id"])
+    if not scheme:
+        recs = state.get("recommendations", [])
+        if recs:
+            scheme = recs[0]
+    if not scheme:
+        from backend.db import get_all_schemes
+        all_s = get_all_schemes()
+        scheme = all_s[0] if all_s else None
+
+    if scheme:
+        state["selected_scheme"] = scheme
+        state["selected_scheme_id"] = scheme.get("id") or scheme.get("scheme_id")
 
     profile = state.get("user_profile", {})
+    if not profile and state.get("user_id"):
+        profile = get_user_by_id(state["user_id"]) or {}
+    if not profile:
+        profile = get_user_by_id(1) or {}
     docs = state.get("document_readiness", {}).get("checklist", [])
     confirmed_rules = state.get("user_confirmed_criteria", [])
 

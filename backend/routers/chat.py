@@ -15,6 +15,7 @@ class ChatMessageRequest(BaseModel):
     session_id: str = Field(..., description="Unique browser or conversation session ID")
     message: str = Field(..., min_length=1, description="Citizen's question")
     user_id: Optional[int] = None
+    language: Optional[str] = "en"
 
 
 @router.post("")
@@ -24,7 +25,8 @@ def send_chat_message(req: ChatMessageRequest):
     result = handle_chat_message(
         session_id=req.session_id,
         message=req.message,
-        user_id=req.user_id
+        user_id=req.user_id,
+        language=req.language or "en"
     )
     # Ensure both 'reply' and 'response' keys exist for frontend compatibility
     reply_text = result.get("reply", "")

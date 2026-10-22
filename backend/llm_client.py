@@ -169,21 +169,46 @@ def _simulate_reasoning(prompt: str, system_prompt: Optional[str], json_mode: bo
                 "extracted_entities": {
                     "assistance_type": "Working capital credit or direct benefit",
                     "priority": "High"
-                }
+                },
+                "semantic_search_query": "street vendor working capital loan collateral free pm svanidhi mudra" if "vendor" in p_lower or "loan" in p_lower else "farmer financial assistance direct benefit support"
             })
+
+    # Scheme Matcher Agent
+    if "matcher" in (system_prompt or "").lower() or "candidate" in (system_prompt or "").lower() or "jansetu" in (system_prompt or "").lower() or "sahayak" in (system_prompt or "").lower():
+        if json_mode:
+            ids = [int(x) for x in re.findall(r'"scheme_id":\s*(\d+)', prompt)]
+            if not ids:
+                ids = [1, 2, 3]
+            recs = []
+            for i, sid in enumerate(ids[:3]):
+                recs.append({
+                    "scheme_id": sid,
+                    "code": f"SCHEME-{sid}",
+                    "name": f"Scheme #{sid}",
+                    "match_score": 96 - (i * 4),
+                    "match_rationale": "High semantic affinity with citizen profile, income tier, and livelihood category.",
+                    "key_highlight": "Subsidized interest, collateral-free credit, and direct bank disbursement."
+                })
+            return json.dumps({"recommendations": recs})
 
     # Eligibility Assessor Agent
     if "eligibility" in (system_prompt or "").lower():
         if json_mode:
             return json.dumps({
+                "verdict": "ELIGIBLE",
                 "overall_verdict": "ELIGIBLE",
-                "eligibility_score": 92,
-                "summary": "Citizen satisfies core statutory eligibility requirements. One self-declaration item requires citizen confirmation.",
-                "checklist": [
-                    {"criterion": "Age within eligible range (18-65 years)", "status": "PASSED", "details": "Applicant meets the age requirement."},
-                    {"criterion": "Annual household income within ceiling", "status": "PASSED", "details": "Income is within prescribed limits for this scheme."},
-                    {"criterion": "Occupation and operational domain", "status": "PASSED", "details": "Citizen's livelihood aligns with targeted beneficiary demographic."},
-                    {"criterion": "No active institutional loan defaults", "status": "SELF_DECLARATION", "details": "Please confirm you have no unpaid defaults with public sector banks."}
+                "score": 94,
+                "eligibility_score": 94,
+                "summary": "Citizen satisfies core statutory eligibility requirements. Personal self-declaration requires confirmation.",
+                "rules_audit": [
+                    {"id": 1, "rule_text": "Age within eligible statutory range (18-65 years)", "status": "PASSED", "citizen_fact": "Applicant meets the statutory age bracket.", "explanation": "Demographic validation passed."},
+                    {"id": 2, "rule_text": "Annual household income within prescribed ceiling", "status": "PASSED", "citizen_fact": "Income within scheme ceiling.", "explanation": "Economic requirement fully satisfied."},
+                    {"id": 3, "rule_text": "Livelihood sector and occupational category", "status": "PASSED", "citizen_fact": "Active occupational profile aligns with target demographic.", "explanation": "Domain eligibility confirmed."},
+                    {"id": 4, "rule_text": "No active institutional loan defaults", "status": "SELF_DECLARATION", "citizen_fact": "Pending self-affirmation.", "explanation": "Please confirm no active defaults with commercial or scheduled banks."}
+                ],
+                "actionable_declarations": [
+                    "I declare that I do not have any non-performing or defaulted institutional loans.",
+                    "I confirm that all submitted family income and livelihood statements are genuine and correct."
                 ]
             })
 
@@ -191,13 +216,16 @@ def _simulate_reasoning(prompt: str, system_prompt: Optional[str], json_mode: bo
     if "document" in (system_prompt or "").lower():
         if json_mode:
             return json.dumps({
+                "overall_status": "READY_TO_APPLY",
                 "readiness_verdict": "READY_FOR_APPLICATION",
                 "ready_count": 3,
                 "missing_count": 0,
-                "documents": [
-                    {"name": "Aadhaar Card", "status": "READY", "notes": "Identity and masked biometric ID verified from demo records."},
-                    {"name": "Active Bank Passbook", "status": "READY", "notes": "Aadhaar-seeded bank account found with DBT linkage active."},
-                    {"name": "Vending / Occupational Certificate", "status": "READY", "notes": "Local municipal authority credential verified."}
+                "total_required": 3,
+                "readiness_percentage": 100,
+                "checklist": [
+                    {"document_name": "Aadhaar Card", "status": "READY", "badge": "Verified Demo Document", "notes": "Identity and masked biometric ID verified from demo records."},
+                    {"document_name": "Active Bank Passbook", "status": "READY", "badge": "Verified Demo Document", "notes": "Aadhaar-seeded bank account found with DBT linkage active."},
+                    {"document_name": "Vending / Occupational Certificate", "status": "READY", "badge": "Verified Demo Document", "notes": "Local municipal authority credential verified."}
                 ]
             })
 
@@ -205,12 +233,20 @@ def _simulate_reasoning(prompt: str, system_prompt: Optional[str], json_mode: bo
     if "draft" in (system_prompt or "").lower():
         if json_mode:
             return json.dumps({
-                "draft_title": "Official Welfare Assistance Application Form (JanSetu Demonstration)",
-                "applicant_name": "Citizen Beneficiary",
-                "scheme_target": "Government Welfare Scheme",
-                "statement_of_need": "The applicant is a genuine citizen requiring welfare assistance in accordance with prescribed guidelines.",
-                "eligibility_affirmation": "All statutory criteria including income threshold, occupational eligibility, and residency requirements have been cross-verified.",
-                "uploaded_credentials": ["Aadhaar Proof", "Bank Account Passbook", "Occupational Certificate"],
+                "application_title": "Official Application for Welfare Scheme",
+                "target_authority": "Ministry of Housing and Urban Affairs / State Welfare Department",
+                "applicant_summary": {
+                    "name": "Citizen Beneficiary",
+                    "occupation": "Street Vendor / Self-Employed",
+                    "income": "Rs 1,20,000",
+                    "location": "Jaipur, Rajasthan"
+                },
+                "statement_of_purpose": "The applicant is a genuine citizen requiring welfare assistance in accordance with prescribed guidelines to expand their livelihood.",
+                "statutory_declarations": [
+                    "I affirm that all demographic and financial information submitted herein is true and accurate.",
+                    "I have verified that I meet the eligibility conditions set forth in scheme guidelines."
+                ],
+                "attached_documents_summary": ["Aadhaar Proof (Demo)", "Bank Account Passbook (Demo)", "Occupational Certificate (Demo)"],
                 "disclaimer": "This application draft has been compiled by the JanSetu AI Agentic Workforce for prototype demonstration only."
             })
 
