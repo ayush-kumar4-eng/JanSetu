@@ -1005,7 +1005,7 @@
                     <div id="workflow-stage-3" class="workflow-stage-content">
                         <div class="stage-card">
                             <div class="stage-card-header">
-                                <div class="agent-badge"><i class="fa-solid fa-scale-balanced"></i> Agent 2: Statutory Eligibility Assessor</div>
+                                <div class="agent-badge"><i class="fa-solid fa-scale-balanced"></i> Agent 3: Statutory Eligibility Assessor & Audit</div>
                                 <h2 id="eligibility-scheme-name">Auditing Eligibility Criteria</h2>
                                 <p>Cross-checking statutory rules (age, income ceiling, occupation, land ownership) with your citizen profile.</p>
                             </div>
@@ -1017,9 +1017,41 @@
 
                             <!-- Statutory Rules Checklist -->
                             <div class="audit-section">
-                                <h3><i class="fa-solid fa-list-check"></i> Statutory Criteria Evaluation</h3>
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                                    <h3 style="margin: 0;"><i class="fa-solid fa-list-check"></i> Statutory Criteria Evaluation</h3>
+                                    <button type="button" class="btn btn-outline btn-sm" onclick="openUploadDocModal()" style="display: inline-flex; align-items: center; gap: 6px;">
+                                        <i class="fa-solid fa-file-arrow-up"></i>
+                                        <span>Upload Document / Proof</span>
+                                    </button>
+                                </div>
                                 <div class="rules-table-container" id="statutory-rules-container">
                                     <!-- Populated by JS -->
+                                </div>
+                            </div>
+
+                            <!-- Upload Supporting Document for Verification Box -->
+                            <div class="audit-section mt-4" style="background: rgba(30, 58, 138, 0.04); border: 1.5px dashed rgba(30, 58, 138, 0.25); border-radius: 12px; padding: 18px 20px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;">
+                                    <div style="flex: 1; min-width: 260px;">
+                                        <h4 style="margin: 0; font-size: 15px; font-weight: 700; color: var(--color-navy); display: flex; align-items: center; gap: 8px;">
+                                            <i class="fa-solid fa-shield-check" style="color: var(--color-navy);"></i>
+                                            <span>Substantiate or Update Your Eligibility Documents</span>
+                                        </h4>
+                                        <p style="margin: 4px 0 0; font-size: 13px; color: var(--text-muted); line-height: 1.45;">
+                                            Have an income certificate, land records (Khatauni/Khasra), caste proof, or ID? Upload them here to satisfy criteria checks in real-time.
+                                        </p>
+                                    </div>
+                                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                        <button type="button" class="btn btn-outline btn-sm" onclick="openUploadDocModal('income_certificate', 'Income Certificate Proof')">
+                                            <i class="fa-solid fa-receipt"></i> Income Proof
+                                        </button>
+                                        <button type="button" class="btn btn-outline btn-sm" onclick="openUploadDocModal('land_record', 'Land Record / Khatauni')">
+                                            <i class="fa-solid fa-mountain-sun"></i> Land Record
+                                        </button>
+                                        <button type="button" class="btn btn-primary btn-sm" onclick="openUploadDocModal()">
+                                            <i class="fa-solid fa-cloud-arrow-up"></i> Upload Document
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
 
@@ -1036,10 +1068,15 @@
                                 <button class="btn btn-secondary" onclick="goToWorkflowStage(2)">
                                     <i class="fa-solid fa-arrow-left"></i> Back to Matches
                                 </button>
-                                <button class="btn btn-primary" id="btn-confirm-eligibility" onclick="proceedToDocumentChecklist()">
-                                    <span>Proceed to Document Checklist</span>
-                                    <i class="fa-solid fa-arrow-right"></i>
-                                </button>
+                                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                    <button class="btn btn-outline" type="button" onclick="openUploadDocModal()">
+                                        <i class="fa-solid fa-upload"></i> Upload Document
+                                    </button>
+                                    <button class="btn btn-primary" id="btn-confirm-eligibility" onclick="proceedToDocumentChecklist()">
+                                        <span>Proceed to Document Checklist</span>
+                                        <i class="fa-solid fa-arrow-right"></i>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1673,14 +1710,19 @@
     </button>
 
     <!-- Notifications Modal Overlay -->
-    <div class="modal-overlay" id="notifications-modal" style="display: none;">
-        <div class="modal-card">
+    <div class="modal-overlay" id="notifications-modal" style="display: none;" onclick="if(event.target===this)toggleNotificationsModal(false)">
+        <div class="modal-card notifications-modal-card" role="dialog" aria-modal="true" aria-labelledby="notifications-modal-title">
             <div class="modal-header">
-                <h3><i class="fa-regular fa-bell"></i> Citizen Notifications</h3>
-                <button class="modal-close-btn" onclick="toggleNotificationsModal(false)"><i class="fa-solid fa-xmark"></i></button>
+                <h3 id="notifications-modal-title"><i class="fa-regular fa-bell"></i> Citizen Notifications & Alerts</h3>
+                <button class="modal-close-btn" onclick="toggleNotificationsModal(false)" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
             </div>
-            <div class="notifications-list" id="modal-notifications-container">
-                <!-- Populated by JS -->
+            <div class="modal-body">
+                <div class="notifications-list" id="modal-notifications-container">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="toggleNotificationsModal(false)">Close</button>
             </div>
         </div>
     </div>
@@ -1700,20 +1742,29 @@
 
             <form id="upload-doc-form" onsubmit="handleUploadDocFormSubmit(event)" novalidate>
                 <div class="modal-body">
+                    <!-- Fulfilling Target Requirement Notification Banner -->
+                    <div id="upload-target-requirement-banner" style="display:none; margin-bottom: 14px; padding: 10px 14px; background: rgba(30, 58, 138, 0.08); border-left: 4px solid var(--color-navy); border-radius: 6px; font-size: 13px; color: var(--color-navy);">
+                        <i class="fa-solid fa-file-circle-check"></i> Fulfilling requirement: <strong id="upload-target-req-text"></strong>
+                    </div>
+
                     <!-- Category Dropdown -->
                     <div class="form-group">
                         <label for="upload-modal-category">Document Category <span class="required-star">*</span></label>
                         <select id="upload-modal-category" required>
                             <option value="" disabled selected>-- Select category --</option>
+                            <option value="application_form">Duly Filled Application Form / KCC Form</option>
+                            <option value="photo">Passport Size Photograph</option>
                             <option value="aadhaar">Aadhaar Card (Identity Proof)</option>
+                            <option value="identity_proof">Identity Proof (Voter ID / Driving License / PAN)</option>
                             <option value="bank_passbook">Bank Passbook / Statement</option>
-                            <option value="vending_certificate">Certificate of Vending / Trade Proof</option>
-                            <option value="land_record">Land Ownership Document (Khatauni / Khasra)</option>
-                            <option value="income_certificate">Income Certificate</option>
+                            <option value="land_record">Land Ownership Document (Khatauni / Khasra / Lease)</option>
+                            <option value="address_proof">Proof of Address / Residence</option>
+                            <option value="income_certificate">Income Certificate / Salary Proof</option>
                             <option value="caste_certificate">Caste / Category Certificate</option>
+                            <option value="vending_certificate">Certificate of Vending / Trade Proof</option>
                             <option value="ration_card">Ration Card / Family ID</option>
                             <option value="college_id">College ID / Admission Letter</option>
-                            <option value="other">Other Document</option>
+                            <option value="other">Other Supporting Document</option>
                         </select>
                     </div>
 

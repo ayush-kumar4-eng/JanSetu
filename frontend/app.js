@@ -226,6 +226,39 @@ function setupEventListeners() {
             closeDeleteDocModal();
         }
     });
+
+    // File Drag and Drop Support
+    const dropZone = document.getElementById("upload-file-drop-zone");
+    const fileInput = document.getElementById("upload-modal-file");
+    if (dropZone && fileInput) {
+        ["dragenter", "dragover", "dragleave", "drop"].forEach(eventName => {
+            dropZone.addEventListener(eventName, e => {
+                e.preventDefault();
+                e.stopPropagation();
+            }, false);
+        });
+
+        ["dragenter", "dragover"].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => {
+                dropZone.classList.add("drag-over");
+            }, false);
+        });
+
+        ["dragleave", "drop"].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => {
+                dropZone.classList.remove("drag-over");
+            }, false);
+        });
+
+        dropZone.addEventListener("drop", e => {
+            const dt = e.dataTransfer;
+            const files = dt?.files;
+            if (files && files.length > 0) {
+                fileInput.files = files;
+                handleFileSelection(fileInput);
+            }
+        }, false);
+    }
 }
 
 // ==============================================================
@@ -1309,11 +1342,43 @@ function renderEligibilityAudit(assessment) {
         const ruleFact = r.citizen_fact || r.profile_val || r.explanation || r.reason || "Verified against citizen profile";
         const status = (r.status || "PASSED").toUpperCase();
         const badgeClass = status === "PASSED" ? "passed" : (status === "FAILED" ? "failed" : "self_declaration");
+
+        let uploadActionBtn = "";
+        const lower = ruleTitle.toLowerCase();
+        let targetCategory = "other";
+        let targetName = "Supporting Document";
+        if (lower.includes("income") || lower.includes("economic") || lower.includes("ceiling") || lower.includes("tax")) {
+            targetCategory = "income_certificate";
+            targetName = "Income Certificate Proof";
+        } else if (lower.includes("land") || lower.includes("hectare") || lower.includes("khasra") || lower.includes("acre")) {
+            targetCategory = "land_record";
+            targetName = "Land Record / Khatauni";
+        } else if (lower.includes("caste") || lower.includes("social") || lower.includes("category")) {
+            targetCategory = "caste_certificate";
+            targetName = "Caste Certificate";
+        } else if (lower.includes("vending") || lower.includes("trade") || lower.includes("occupation") || lower.includes("farmer")) {
+            targetCategory = "vending_certificate";
+            targetName = "Trade / Vending Certificate";
+        } else if (lower.includes("age") || lower.includes("identity") || lower.includes("citizen")) {
+            targetCategory = "aadhaar";
+            targetName = "Identity Proof (Aadhaar/Voter)";
+        }
+
+        if (status !== "PASSED") {
+            uploadActionBtn = `
+                <button type="button" class="btn btn-outline btn-xs" style="margin-top: 6px; font-size: 11px; padding: 3px 8px; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px;" onclick="openUploadDocModal('${targetCategory}', '${escapeHtml(targetName)}')">
+                    <i class="fa-solid fa-cloud-arrow-up"></i>
+                    <span>Upload Proof</span>
+                </button>
+            `;
+        }
+
         return `
             <div class="rule-audit-row">
-                <div class="rule-desc">
+                <div class="rule-desc" style="flex: 1;">
                     <strong>${escapeHtml(ruleTitle)}</strong>
-                    <div style="font-size: 12px; color: var(--text-muted)">Citizen Context: ${escapeHtml(ruleFact)}</div>
+                    <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Citizen Context: ${escapeHtml(ruleFact)}</div>
+                    ${uploadActionBtn}
                 </div>
                 <span class="rule-status-badge ${badgeClass}">${escapeHtml(status)}</span>
             </div>
@@ -1417,11 +1482,33 @@ function renderDocumentChecklist(readiness) {
         const statusChip = d.verified
             ? `<span class="status-chip success">Ready</span>`
             : `<span class="status-chip danger">Missing</span>`;
+
+        const reqName = d.name || "";
+        const lowerReq = reqName.toLowerCase();
+        let suggestedCategory = "other";
+        if (lowerReq.includes("form") || lowerReq.includes("kcc") || lowerReq.includes("application")) {
+            suggestedCategory = "application_form";
+        } else if (lowerReq.includes("photo") || lowerReq.includes("passport")) {
+            suggestedCategory = "photo";
+        } else if (lowerReq.includes("land") || lowerReq.includes("lease") || lowerReq.includes("deed") || lowerReq.includes("revenue") || lowerReq.includes("khasra")) {
+            suggestedCategory = "land_record";
+        } else if (lowerReq.includes("bank") || lowerReq.includes("passbook") || lowerReq.includes("statement") || lowerReq.includes("account")) {
+            suggestedCategory = "bank_passbook";
+        } else if (lowerReq.includes("income") || lowerReq.includes("salary") || lowerReq.includes("tax")) {
+            suggestedCategory = "income_certificate";
+        } else if (lowerReq.includes("caste") || lowerReq.includes("category")) {
+            suggestedCategory = "caste_certificate";
+        } else if (lowerReq.includes("aadhaar") || lowerReq.includes("voter") || lowerReq.includes("identity")) {
+            suggestedCategory = "aadhaar";
+        }
+
+        const safeReqName = escapeHtml(reqName).replace(/'/g, "\\'");
         const uploadBtn = isMissing
-            ? `<button class="btn btn-primary btn-sm" style="margin-top:6px;" onclick="openUploadDocModal()">
+            ? `<button class="btn btn-primary btn-sm" style="margin-top:6px;" onclick="openUploadDocModal('${suggestedCategory}', '${safeReqName}', '${safeReqName}')">
                    <i class="fa-solid fa-upload"></i> Upload Document
                </button>`
             : '';
+
         return `
         <div class="doc-check-item">
             <div style="flex:1;">
@@ -1803,14 +1890,9 @@ function renderDocumentsPage() {
             <div class="doc-card-actions">
                 <span class="status-chip ${badge.cls}" style="margin-bottom:6px;">${badge.label}</span>
                 <div class="doc-action-btns">
-                    ${hasFile
-                        ? `<button class="btn btn-outline btn-sm doc-action-btn" title="View / Download" onclick="viewDocument(${doc.id})">
-                               <i class="fa-solid fa-eye"></i> View
-                           </button>`
-                        : `<button class="btn btn-secondary btn-sm doc-action-btn" title="No file to view (demo generated)" disabled>
-                               <i class="fa-solid fa-eye"></i> View
-                           </button>`
-                    }
+                    <button class="btn btn-outline btn-sm doc-action-btn" title="View Document / Credential" onclick="viewDocument(${doc.id})">
+                        <i class="fa-solid fa-eye"></i> View
+                    </button>
                     <button class="btn btn-danger-outline btn-sm doc-action-btn" title="Delete document" onclick="promptDeleteDocument(${doc.id}, '${escapeHtml(docName).replace(/'/g,"\'")}')">
                         <i class="fa-solid fa-trash"></i>
                     </button>
@@ -1826,10 +1908,13 @@ function renderDocumentsPage() {
 
 let _pendingDeleteDocId = null;
 let _pendingDeleteDocName = "";
+let _currentUploadTargetRequirement = "";
 
-function openUploadDocModal(prefillCategory = "") {
+function openUploadDocModal(prefillCategory = "", prefillDisplayName = "", targetRequirement = "") {
     const modal = document.getElementById("upload-doc-modal");
     if (!modal) return;
+
+    _currentUploadTargetRequirement = targetRequirement || prefillDisplayName || "";
 
     // Reset form
     document.getElementById("upload-doc-form").reset();
@@ -1840,13 +1925,33 @@ function openUploadDocModal(prefillCategory = "") {
     document.getElementById("btn-upload-submit").disabled = false;
     document.getElementById("upload-btn-text").textContent = "Upload Document";
 
+    // Show or hide target requirement banner
+    const banner = document.getElementById("upload-target-requirement-banner");
+    const bannerText = document.getElementById("upload-target-req-text");
+    if (banner && bannerText) {
+        if (_currentUploadTargetRequirement) {
+            bannerText.textContent = _currentUploadTargetRequirement;
+            banner.style.display = "block";
+        } else {
+            banner.style.display = "none";
+        }
+    }
+
     if (prefillCategory) {
         const sel = document.getElementById("upload-modal-category");
         if (sel) sel.value = prefillCategory;
     }
 
+    if (prefillDisplayName) {
+        const nameInput = document.getElementById("upload-modal-display-name");
+        if (nameInput) nameInput.value = prefillDisplayName;
+    }
+
     modal.style.display = "flex";
-    setTimeout(() => document.getElementById("upload-modal-display-name")?.focus(), 100);
+    setTimeout(() => {
+        const focusTarget = prefillDisplayName ? document.getElementById("upload-file-drop-zone") : document.getElementById("upload-modal-display-name");
+        focusTarget?.focus();
+    }, 100);
 }
 
 function closeUploadDocModal() {
@@ -1863,9 +1968,14 @@ function handleUploadModalBackdrop(e) {
 function handleFileSelection(input) {
     const label = document.getElementById("upload-file-label");
     const dropZone = document.getElementById("upload-file-drop-zone");
+    const nameInput = document.getElementById("upload-modal-display-name");
     if (input.files && input.files[0]) {
-        label.textContent = input.files[0].name;
+        const file = input.files[0];
+        label.textContent = file.name;
         dropZone.classList.add("file-selected");
+        if (nameInput && !nameInput.value.trim()) {
+            nameInput.value = _currentUploadTargetRequirement || file.name.replace(/\.[^/.]+$/, "");
+        }
     } else {
         label.textContent = "Click to browse or drag & drop";
         dropZone.classList.remove("file-selected");
@@ -1906,10 +2016,12 @@ async function handleUploadDocFormSubmit(event) {
     btnText.textContent = "Uploading...";
 
     try {
+        const activeUid = Number(state.activeUserId || state.currentUser?.id) || 1;
         const formData = new FormData();
-        formData.append("user_id", state.activeUserId);
+        formData.append("user_id", activeUid);
         formData.append("doc_type", category);
         formData.append("doc_name", displayName);
+        formData.append("target_requirement", _currentUploadTargetRequirement || displayName);
         formData.append("file", file);
 
         const res = await fetch("/api/documents/upload", {
@@ -1919,12 +2031,18 @@ async function handleUploadDocFormSubmit(event) {
         const data = await res.json();
 
         if (res.ok && data.success) {
-            showToast(`✅ "${displayName}" uploaded successfully!`, "success");
+            showToast(`✅ "${displayName}" uploaded & verified successfully!`, "success");
             closeUploadDocModal();
             await loadUserDocuments();
             renderDocumentsPage();
 
-            // If we're on the workflow stage 4, refresh the document checklist
+            // If we're on the Stage 3 Eligibility Audit, re-run audit with the new document!
+            if (state.workflowStage === 3 && state.selectedScheme) {
+                await selectSchemeForWorkflow(state.selectedScheme.id || state.selectedScheme.scheme_id);
+                showToast("Eligibility audit updated with uploaded proof!", "success");
+            }
+
+            // If we're on workflow stage 4, refresh the document checklist
             if (state.workflowStage === 4 && state.selectedScheme) {
                 await proceedToDocumentChecklist();
             }
@@ -1953,7 +2071,8 @@ function showUploadError(msg) {
 // ==============================================================
 
 function viewDocument(docId) {
-    const url = `/api/documents/view/${docId}?user_id=${state.activeUserId}`;
+    const activeUid = Number(state.activeUserId || state.currentUser?.id) || 1;
+    const url = `/api/documents/view/${docId}?user_id=${activeUid}`;
     window.open(url, "_blank", "noopener,noreferrer");
 }
 
@@ -2073,12 +2192,31 @@ function toggleNotificationsModal(show) {
     if (show) {
         const container = document.getElementById("modal-notifications-container");
         if (container) {
-            container.innerHTML = state.notifications.map(n => `
-                <div style="padding: 10px 0; border-bottom: 1px solid var(--border-subtle)">
-                    <strong style="font-size: 13px;">${escapeHtml(n.title)}</strong>
-                    <p style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">${escapeHtml(n.message)}</p>
-                </div>
-            `).join("") || "<p style='font-size: 13px; color: var(--text-muted)'>No active alerts.</p>";
+            if (!state.notifications || state.notifications.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 32px 16px; color: var(--text-muted);">
+                        <i class="fa-regular fa-bell-slash" style="font-size: 32px; margin-bottom: 10px; display: block; color: #94a3b8;"></i>
+                        <p style="margin: 0; font-size: 14px;">No active alerts or notifications right now.</p>
+                    </div>
+                `;
+            } else {
+                container.innerHTML = state.notifications.map(n => {
+                    const timeStr = n.created_at ? new Date(n.created_at).toLocaleString("en-IN", {
+                        day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit"
+                    }) : "Recent";
+                    return `
+                    <div class="notification-modal-item">
+                        <div class="notification-modal-icon">
+                            <i class="fa-solid fa-bell"></i>
+                        </div>
+                        <div class="notification-modal-body">
+                            <div class="notification-modal-title">${escapeHtml(n.title)}</div>
+                            <p class="notification-modal-desc">${escapeHtml(n.message)}</p>
+                            <span class="notification-modal-time"><i class="fa-regular fa-clock"></i> ${escapeHtml(timeStr)}</span>
+                        </div>
+                    </div>`;
+                }).join("");
+            }
         }
     }
 }
@@ -2455,15 +2593,56 @@ async function handleSendChatMessage(event) {
     }
 }
 
+function formatChatMarkdown(text) {
+    if (!text) return "";
+    let safe = text.replace(/\r\n/g, "\n");
+    safe = escapeHtml(safe);
+
+    // Convert ### or ## or Scheme: into a sleek scheme badge card
+    safe = safe.replace(/^(?:#{1,4}\s*|Scheme:\s*)(.*?)$/gm, (match, title) => {
+        const cleanTitle = title.replace(/\*\*/g, "").replace(/\*/g, "").trim();
+        return `<div class="chat-scheme-badge"><i class="fa-solid fa-award"></i> <span>${cleanTitle}</span></div>`;
+    });
+
+    // Bold tags: **bold** -> <strong>bold</strong>
+    safe = safe.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+
+    // Remove any remaining stray markdown asterisks or hashes
+    safe = safe.replace(/\*{1,3}/g, "");
+    safe = safe.replace(/#{1,6}\s*/g, "");
+
+    // Structured section headers
+    safe = safe.replace(/^(Related Welfare Initiatives:|Mandatory Documents Checklist:|Eligibility Requirements:|Key Benefits:|Next Steps:|Checklist Guidance:|Application procedure:)\s*$/gm,
+        '<div class="chat-section-header">$1</div>');
+
+    // Bullet points: • or -
+    safe = safe.replace(/^[•\-\*]\s*(.*?)$/gm, `
+        <div class="chat-bullet-row">
+            <span class="chat-bullet-dot">•</span>
+            <span class="chat-bullet-text">$1</span>
+        </div>
+    `);
+
+    // Official portal URLs
+    safe = safe.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener" class="chat-portal-link"><i class="fa-solid fa-arrow-up-right-from-square"></i> $1</a>');
+
+    // Spacing & line breaks
+    safe = safe.replace(/\n\n+/g, "<div class='chat-spacer'></div>");
+    safe = safe.replace(/\n/g, "<br>");
+
+    return safe;
+}
+
 function appendChatMessage(sender, text) {
     const container = document.getElementById("chat-messages");
     if (!container) return;
 
     const div = document.createElement("div");
     div.className = `chat-bubble ${sender}-message`;
+    const formattedContent = sender === 'bot' ? formatChatMarkdown(text) : escapeHtml(text).replace(/\n/g, '<br>');
     div.innerHTML = `
         <div class="msg-author">${sender === 'user' ? 'You' : '<i class="fa-solid fa-robot"></i> JanSetu Mitra'}</div>
-        <div class="msg-content">${escapeHtml(text).replace(/\n/g, '<br>')}</div>
+        <div class="msg-content">${formattedContent}</div>
     `;
     container.appendChild(div);
     container.scrollTop = container.scrollHeight;

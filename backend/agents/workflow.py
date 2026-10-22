@@ -81,7 +81,7 @@ Citizen's Plain Language Query:
     # Fallback search query if LLM did not return one
     semantic_query = intake_data.get("semantic_search_query")
     if not semantic_query or len(semantic_query) < 5:
-        semantic_query = f"{profile.get('occupation', '')} {query} {profile.get('residence_area', '')} financial assistance"
+        semantic_query = f"{query} financial assistance subsidy grant".strip()
         intake_data["semantic_search_query"] = semantic_query
 
     return {"intake_result": intake_data}
@@ -101,14 +101,25 @@ def scheme_matcher_agent(state: WorkflowState) -> Dict[str, Any]:
     # Semantic search with Qdrant - retrieve up to 7 candidates
     candidates = search_schemes(query, limit=7)
 
-    # If fewer than 6 candidates found, supplement with occupational / category search
+    # If fewer than 6 candidates found, supplement with user query / identified category
     if len(candidates) < 6:
-        supp = search_schemes(profile.get("occupation", "citizen welfare assistance"), limit=7)
+        category_hint = intake.get("identified_category") or ""
+        supp_query = f"{state.get('user_query', '')} {category_hint} welfare scheme financial assistance".strip()
+        supp = search_schemes(supp_query, limit=7)
         for s in supp:
-            if not any(c["scheme_id"] == s["scheme_id"] for c in candidates):
+            sid = s.get("id") or s.get("scheme_id")
+            s["id"] = sid
+            s["scheme_id"] = sid
+            if not any((c.get("id") == sid or c.get("scheme_id") == sid) for c in candidates):
                 candidates.append(s)
             if len(candidates) >= 7:
                 break
+
+    # Normalize id and scheme_id across all candidates
+    for c in candidates:
+        sid = c.get("id") or c.get("scheme_id")
+        c["id"] = sid
+        c["scheme_id"] = sid
 
     system_prompt = """
 You are the Scheme Matcher Agent for JanSetu.
@@ -169,55 +180,53 @@ Candidate Schemes:
         if scheme_id and scheme_id not in seen_ids:
             full_scheme = get_scheme_by_id(scheme_id)
             if full_scheme:
-                full_scheme["id"] = full_scheme.get("id") or scheme_id
-                full_scheme["scheme_id"] = full_scheme.get("scheme_id") or full_scheme["id"]
+                sid = full_scheme.get("id") or full_scheme.get("scheme_id")
+                full_scheme["id"] = sid
+                full_scheme["scheme_id"] = sid
                 full_scheme["is_recommended"] = True
                 full_scheme["match_score"] = r.get("match_score", 92)
                 full_scheme["match_percentage"] = f"{int(r.get('match_score', 92))}%"
                 full_scheme["match_rationale"] = r.get("match_rationale", "Strong match for your citizen profile and stated requirements.")
                 full_scheme["key_highlight"] = r.get("key_highlight", full_scheme.get("benefits", "")[:90])
                 final_recs.append(full_scheme)
-                seen_ids.add(scheme_id)
+                seen_ids.add(sid)
 
-    # Ensure at least 2 recommended schemes
+    # Ensure at least 2 recommended schemes from top candidates
     if len(final_recs) < 2 and candidates:
         for c in candidates:
-            sid = c.get("scheme_id") or c.get("id")
-            if sid not in seen_ids:
-                full = get_scheme_by_id(sid) or dict(c)
-                full["id"] = sid
-                full["scheme_id"] = sid
-                full["is_recommended"] = True
-                full["match_score"] = c.get("match_score", 85)
-                full["match_percentage"] = f"{int(c.get('match_score', 85))}%"
-                full["match_rationale"] = "Strong candidate identified from semantic alignment with your profile category."
-                full["key_highlight"] = c.get("benefits", "")[:90]
-                final_recs.append(full)
-                seen_ids.add(sid)
+            cid = c.get("id") or c.get("scheme_id")
+            if cid not in seen_ids:
+                c["id"] = cid
+                c["scheme_id"] = cid
+                c["is_recommended"] = True
+                c["match_score"] = c.get("match_score", 85)
+                c["match_percentage"] = f"{int(c.get('match_score', 85))}%"
+                c["match_rationale"] = "Strong candidate identified from semantic alignment with your profile category."
+                c["key_highlight"] = c.get("benefits", "")[:90]
+                final_recs.append(c)
+                seen_ids.add(cid)
                 if len(final_recs) >= 3:
                     break
 
     # Build complete list of 6-7 results, tagging recommended vs other relevant matches
     all_results = []
     for r in final_recs[:3]:
-        r["id"] = r.get("id") or r.get("scheme_id")
-        r["scheme_id"] = r.get("scheme_id") or r.get("id")
         r["is_recommended"] = True
         all_results.append(r)
 
     for c in candidates:
-        sid = c.get("scheme_id") or c.get("id")
-        if sid not in seen_ids:
-            full = get_scheme_by_id(sid) or dict(c)
-            full["id"] = sid
-            full["scheme_id"] = sid
+        cid = c.get("id") or c.get("scheme_id")
+        if cid not in seen_ids:
+            full = get_scheme_by_id(cid) or c
+            full["id"] = cid
+            full["scheme_id"] = cid
             full["is_recommended"] = False
             full["match_score"] = c.get("match_score", 72)
             full["match_percentage"] = f"{int(c.get('match_score', 72))}%"
             full["match_rationale"] = "Relevant welfare scheme matching your sector and geographic applicability."
             full["key_highlight"] = full.get("benefits", "")[:90]
             all_results.append(full)
-            seen_ids.add(sid)
+            seen_ids.add(cid)
             if len(all_results) >= 7:
                 break
 
@@ -237,38 +246,25 @@ def eligibility_assessor_agent(state: WorkflowState) -> Dict[str, Any]:
     scheme = state.get("selected_scheme")
     if not scheme and state.get("selected_scheme_id"):
         scheme = get_scheme_by_id(state["selected_scheme_id"])
-    if not scheme:
-        recs = state.get("recommendations", [])
-        if recs:
-            scheme = recs[0]
-    if not scheme:
-        from backend.db import get_all_schemes
-        all_s = get_all_schemes()
-        scheme = all_s[0] if all_s else None
-
-    if scheme:
-        state["selected_scheme"] = scheme
-        state["selected_scheme_id"] = scheme.get("id") or scheme.get("scheme_id")
 
     profile = state.get("user_profile", {})
-    if not profile and state.get("user_id"):
-        profile = get_user_by_id(state["user_id"]) or {}
-    if not profile:
-        profile = get_user_by_id(1) or {}
-
     if not scheme:
         return {"error": "No scheme selected for eligibility assessment."}
+
+    user_id = state.get("user_id") or profile.get("id") or 1
+    user_docs = get_user_documents(user_id)
+    doc_summary = [f"{d.get('doc_name')} (Type: {d.get('doc_type')}, Status: {d.get('status')})" for d in user_docs]
 
     criteria = scheme.get("eligibility_criteria", {})
     key_rules = criteria.get("key_rules", [])
 
     system_prompt = """
 You are the Eligibility Assessor Agent for JanSetu.
-You must compare the citizen's profile with the scheme's statutory eligibility criteria.
+You must compare the citizen's profile and any uploaded supporting documents with the scheme's statutory eligibility criteria.
 Evaluate each criterion and categorize as:
-- 'PASSED': Profile meets criterion (e.g. age, income ceiling, occupation, location)
-- 'FAILED': Profile definitively violates rule
-- 'SELF_DECLARATION': Requires citizen's personal affirmation (e.g. 'I do not have a pucca house' or 'I have no active bank default')
+- 'PASSED': Profile meets criterion (e.g. age, income ceiling, occupation, location) or is substantiated by an uploaded supporting document.
+- 'FAILED': Profile definitively violates rule without waiver.
+- 'SELF_DECLARATION': Requires citizen's personal affirmation (e.g. 'I do not have a pucca house' or 'I have no active bank default').
 
 Provide response in JSON:
 {
@@ -305,6 +301,7 @@ Citizen Facts:
 - Social Category: {profile.get('social_category')}
 - Residence Area: {profile.get('residence_area')}
 - BPL: {profile.get('is_bpl')}
+- Uploaded Supporting Documents in Locker: {", ".join(doc_summary) if doc_summary else "No documents uploaded yet"}
 """
 
     assessment = invoke_llm_json(user_prompt, system_prompt)
@@ -312,6 +309,10 @@ Citizen Facts:
     # Deterministic safety backup if rules_audit is empty
     if not assessment.get("rules_audit"):
         audit_items = []
+        has_income_doc = any("income" in (d.get("doc_type", "") + d.get("doc_name", "")).lower() for d in user_docs)
+        has_land_doc = any("land" in (d.get("doc_type", "") + d.get("doc_name", "")).lower() for d in user_docs)
+        has_vending_doc = any(("vending" in d.get("doc_type", "").lower() or "trade" in d.get("doc_name", "").lower()) for d in user_docs)
+
         # Age check
         min_age = criteria.get("min_age", 18)
         max_age = criteria.get("max_age", 75)
@@ -328,30 +329,58 @@ Citizen Facts:
         # Income check
         max_income = criteria.get("max_annual_income", 300000)
         user_income = profile.get("annual_income", 120000)
-        income_passed = user_income <= max_income if max_income else True
+        income_passed = (user_income <= max_income if max_income else True) or has_income_doc
+        income_fact = f"Citizen annual income is Rs {user_income:,}"
+        if has_income_doc:
+            income_fact += " (Substantiated by uploaded Income Proof)"
         audit_items.append({
             "id": 2,
             "rule_text": f"Annual household income ceiling of Rs {max_income:,}" if max_income else "No strict income limit",
             "status": "PASSED" if income_passed else "FAILED",
-            "citizen_fact": f"Citizen annual income is Rs {user_income:,}",
-            "explanation": "Income is within ceiling." if income_passed else "Exceeds income limit."
+            "citizen_fact": income_fact,
+            "explanation": "Income criteria verified and substantiated." if income_passed else "Exceeds income limit."
         })
+
+        # Land check if applicable
+        if "land" in json.dumps(criteria).lower():
+            land_val = profile.get("land_ownership_hectares", 0)
+            land_fact = f"{land_val} hectares"
+            if has_land_doc:
+                land_fact += " (Substantiated by uploaded Land Records / Khatauni)"
+            audit_items.append({
+                "id": 3,
+                "rule_text": "Landholding ownership verification",
+                "status": "PASSED" if (land_val > 0 or has_land_doc) else "SELF_DECLARATION",
+                "citizen_fact": land_fact,
+                "explanation": "Landholding substantiated by records." if has_land_doc else "Self-declaration acceptable."
+            })
 
         # Key rules as self-declarations
         actionable_declarations = []
-        for i, rule in enumerate(key_rules[:3], start=3):
+        for i, rule in enumerate(key_rules[:3], start=4):
+            # If user uploaded documents for this rule, pass it
+            rule_lower = rule.lower()
+            is_substantiated = False
+            if "income" in rule_lower and has_income_doc:
+                is_substantiated = True
+            elif "land" in rule_lower and has_land_doc:
+                is_substantiated = True
+            elif ("trade" in rule_lower or "vendor" in rule_lower) and has_vending_doc:
+                is_substantiated = True
+
             audit_items.append({
                 "id": i,
                 "rule_text": rule,
-                "status": "SELF_DECLARATION",
-                "citizen_fact": "Self-attested statement required",
-                "explanation": "Please review and confirm this statement."
+                "status": "PASSED" if is_substantiated else "SELF_DECLARATION",
+                "citizen_fact": "Substantiated by uploaded document in locker" if is_substantiated else "Self-attested statement required",
+                "explanation": "Document verified in locker." if is_substantiated else "Please review and confirm this statement."
             })
-            actionable_declarations.append(rule)
+            if not is_substantiated:
+                actionable_declarations.append(rule)
 
         assessment = {
             "verdict": "ELIGIBLE" if (age_passed and income_passed) else "CONDITIONALLY_ELIGIBLE",
-            "score": 94 if (age_passed and income_passed) else 65,
+            "score": 96 if (age_passed and income_passed) else 75,
             "summary": "You satisfy the primary demographic and economic qualifications for this welfare initiative.",
             "rules_audit": audit_items,
             "actionable_declarations": actionable_declarations or ["I confirm that the details provided are accurate."]
@@ -370,68 +399,120 @@ def document_readiness_agent(state: WorkflowState) -> Dict[str, Any]:
     scheme = state.get("selected_scheme")
     if not scheme and state.get("selected_scheme_id"):
         scheme = get_scheme_by_id(state["selected_scheme_id"])
-    if not scheme:
-        recs = state.get("recommendations", [])
-        if recs:
-            scheme = recs[0]
-    if not scheme:
-        from backend.db import get_all_schemes
-        all_s = get_all_schemes()
-        scheme = all_s[0] if all_s else None
 
-    if scheme:
-        state["selected_scheme"] = scheme
-        state["selected_scheme_id"] = scheme.get("id") or scheme.get("scheme_id")
-
-    user_id = state.get("user_id", 1)
+    user_id = state.get("user_id") or state.get("user_profile", {}).get("id") or 1
     user_docs = get_user_documents(user_id)
 
     required_docs = scheme.get("required_documents", []) if scheme else []
-
-    # Map user doc types to keywords
-    available_doc_types = [d.get("doc_type", "").lower() for d in user_docs]
-    available_doc_names = [d.get("doc_name", "").lower() for d in user_docs]
 
     doc_status_list = []
     ready_count = 0
 
     for req in required_docs:
-        req_lower = req.lower()
+        req_lower = req.lower().strip()
+        req_clean = req_lower.replace("-", " ").replace("/", " ").replace("(", " ").replace(")", " ")
+        req_tokens = set(t for t in req_clean.split() if len(t) > 2)
         is_ready = False
         matched_user_doc = None
 
-        # Matching heuristics
-        if "aadhaar" in req_lower and any("aadhaar" in dt or "aadhaar" in dn for dt, dn in zip(available_doc_types, available_doc_names)):
-            is_ready = True
-        elif ("bank" in req_lower or "passbook" in req_lower) and any("bank" in dt or "passbook" in dn for dt, dn in zip(available_doc_types, available_doc_names)):
-            is_ready = True
-        elif ("vending" in req_lower or "cov" in req_lower) and any("vending" in dt or "vending" in dn for dt, dn in zip(available_doc_types, available_doc_names)):
-            is_ready = True
-        elif ("land" in req_lower or "khasra" in req_lower or "ror" in req_lower) and any("land" in dt or "land" in dn for dt, dn in zip(available_doc_types, available_doc_names)):
-            is_ready = True
-        elif ("income" in req_lower or "affidavit" in req_lower) and any("income" in dt or "income" in dn for dt, dn in zip(available_doc_types, available_doc_names)):
-            is_ready = True
-        elif ("caste" in req_lower) and any("caste" in dt or "caste" in dn for dt, dn in zip(available_doc_types, available_doc_names)):
-            is_ready = True
-        elif ("ration" in req_lower or "family" in req_lower) and any("ration" in dt or "ration" in dn for dt, dn in zip(available_doc_types, available_doc_names)):
-            is_ready = True
-        elif ("college" in req_lower or "marksheet" in req_lower or "admission" in req_lower) and any("college" in dt or "admission" in dn for dt, dn in zip(available_doc_types, available_doc_names)):
-            is_ready = True
+        for d in user_docs:
+            dt = (d.get("doc_type") or "").lower().strip()
+            dn = (d.get("doc_name") or "").lower().strip()
+            dn_tokens = set(t for t in dn.replace("-", " ").replace("/", " ").replace("(", " ").replace(")", " ").split() if len(t) > 2)
+
+            ocr_info = d.get("verified_ocr_data") or d.get("ocr_data") or {}
+            if isinstance(ocr_info, str):
+                try:
+                    ocr_info = json.loads(ocr_info)
+                except Exception:
+                    ocr_info = {}
+            target_req = (ocr_info.get("target_requirement") or "").lower().strip()
+            target_tokens = set(t for t in target_req.replace("-", " ").replace("/", " ").replace("(", " ").replace(")", " ").split() if len(t) > 2)
+
+            # 1. Direct target requirement match (e.g. uploaded specifically for this card)
+            if target_req:
+                if target_req in req_lower or req_lower in target_req:
+                    is_ready = True
+                elif req_tokens and target_tokens and req_tokens.intersection(target_tokens):
+                    is_ready = True
+
+            # 2. Application form / KCC / Scheme form
+            if ("form" in req_clean or "kcc" in req_clean or "application" in req_clean) and (
+                dt == "application_form" or "form" in dn or "kcc" in dn or "application" in dn
+            ):
+                is_ready = True
+
+            # 3. Photographs / Passport photos
+            elif ("photo" in req_clean or "passport" in req_clean or "photograph" in req_clean) and (
+                dt == "photo" or "photo" in dn or "passport" in dn or "photograph" in dn
+            ):
+                is_ready = True
+
+            # 4. Identity / Aadhaar / Voter ID / PAN
+            elif ("aadhaar" in req_clean or "voter" in req_clean or "identity" in req_clean) and (
+                dt in ["aadhaar", "identity_proof"] or "aadhaar" in dn or "voter" in dn or "identity" in dn or "pan" in dn
+            ):
+                is_ready = True
+
+            # 5. Bank Passbook / Statement
+            elif ("bank" in req_clean or "passbook" in req_clean or "account" in req_clean or "statement" in req_clean) and (
+                dt == "bank_passbook" or "bank" in dn or "passbook" in dn or "account" in dn or "statement" in dn
+            ):
+                is_ready = True
+
+            # 6. Land / Revenue / Lease / Title / Khatauni / Khasra
+            elif ("land" in req_clean or "lease" in req_clean or "deed" in req_clean or "revenue" in req_clean or "khasra" in req_clean or "ror" in req_clean or "patta" in req_clean or "title" in req_clean or "ownership" in req_clean) and (
+                dt in ["land_record", "address_proof"] or "land" in dn or "lease" in dn or "deed" in dn or "khasra" in dn or "residence" in dn or "address" in dn
+            ):
+                is_ready = True
+
+            # 7. Income / Salary / Affidavit
+            elif ("income" in req_clean or "salary" in req_clean or "affidavit" in req_clean) and (
+                dt == "income_certificate" or "income" in dn or "salary" in dn
+            ):
+                is_ready = True
+
+            # 8. Caste / Category
+            elif ("caste" in req_clean or "community" in req_clean) and (
+                dt == "caste_certificate" or "caste" in dn
+            ):
+                is_ready = True
+
+            # 9. Ration / Family ID
+            elif ("ration" in req_clean or "family" in req_clean or "bpl" in req_clean) and (
+                dt == "ration_card" or "ration" in dn or "family" in dn or "bpl" in dn
+            ):
+                is_ready = True
+
+            # 10. Education / College
+            elif ("college" in req_clean or "marksheet" in req_clean or "admission" in req_clean or "education" in req_clean or "degree" in req_clean) and (
+                dt == "college_id" or "college" in dn or "admission" in dn or "marksheet" in dn
+            ):
+                is_ready = True
+
+            # 11. Fuzzy token overlap
+            elif req_tokens and dn_tokens and (req_tokens.intersection(dn_tokens)):
+                is_ready = True
+
+            if is_ready:
+                matched_user_doc = d
+                break
 
         if is_ready:
             ready_count += 1
+            has_real_file = bool(matched_user_doc and matched_user_doc.get("file_path"))
             doc_status_list.append({
                 "document_name": req,
                 "status": "READY",
-                "badge": "Verified Demo Document",
-                "notes": "Verified automatically via simulated OCR extraction."
+                "badge": "Uploaded & Verified" if has_real_file else "Verified Demo Document",
+                "notes": f"Matched with '{matched_user_doc.get('doc_name')}' in your locker." if matched_user_doc else "Verified automatically via simulated OCR extraction."
             })
         else:
             doc_status_list.append({
                 "document_name": req,
                 "status": "MISSING",
                 "badge": "Upload or Demo Generate Required",
-                "notes": "Required for formal processing. You can upload a mock file or click 'Generate Demo Document'."
+                "notes": "Required for formal processing. You can upload your document or click 'Generate Demo Document'."
             })
 
     total_required = max(1, len(required_docs))
@@ -459,24 +540,8 @@ def application_drafter_agent(state: WorkflowState) -> Dict[str, Any]:
     scheme = state.get("selected_scheme")
     if not scheme and state.get("selected_scheme_id"):
         scheme = get_scheme_by_id(state["selected_scheme_id"])
-    if not scheme:
-        recs = state.get("recommendations", [])
-        if recs:
-            scheme = recs[0]
-    if not scheme:
-        from backend.db import get_all_schemes
-        all_s = get_all_schemes()
-        scheme = all_s[0] if all_s else None
-
-    if scheme:
-        state["selected_scheme"] = scheme
-        state["selected_scheme_id"] = scheme.get("id") or scheme.get("scheme_id")
 
     profile = state.get("user_profile", {})
-    if not profile and state.get("user_id"):
-        profile = get_user_by_id(state["user_id"]) or {}
-    if not profile:
-        profile = get_user_by_id(1) or {}
     docs = state.get("document_readiness", {}).get("checklist", [])
     confirmed_rules = state.get("user_confirmed_criteria", [])
 

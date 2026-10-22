@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Optional
 from qdrant_client import QdrantClient
 from qdrant_client.http import models as qmodels
 from backend.config import QDRANT_URL, QDRANT_API_KEY, QDRANT_LOCAL_DIR
-from backend.db import get_all_schemes
+from backend.db import get_all_schemes, get_db_connection
 
 logger = logging.getLogger("JanSetu.VectorSearch")
 COLLECTION_NAME = "jansetu_schemes"
@@ -108,7 +108,8 @@ def ensure_schemes_indexed(force_reindex: bool = False):
 
     if collection_exists and not force_reindex:
         count = client.count(collection_name=COLLECTION_NAME).count
-        if count > 0:
+        all_schemes = get_all_schemes()
+        if count >= len(all_schemes) and count > 0:
             logger.info(f"Qdrant collection '{COLLECTION_NAME}' already contains {count} schemes.")
             return
 
@@ -247,7 +248,72 @@ def search_schemes(query: str, limit: int = 5, category: Optional[str] = None) -
             "verification_date": payload.get("verification_date", "unknown"),
             "source": payload.get("source", "myScheme Portal"),
             "match_score": round(normalized_score * 100, 1),
-            "match_percentage": f"{round(normalized_score * 100)}%"
         })
 
-    return results
+    # Hybrid keyword boost for exact scheme names/codes mentioned in query
+    stop_words = {
+        "what", "which", "where", "when", "does", "have", "need", "give", "tell", "about",
+        "criteria", "rules", "eligibility", "documents", "mandatory", "scheme", "schemes",
+        "apply", "application", "portal", "help", "financial", "assistance", "support",
+        "provide", "benefit", "benefits", "yojana", "yojna", "government", "central",
+        "state", "pradhan", "mantri", "much", "many", "require", "required", "under", "with",
+        "for", "the", "and", "from", "into", "some", "want", "also", "you", "your", "are", "can", "how"
+    }
+    clean_query = re.sub(r"[^\w\s-]", " ", query.lower())
+    tokens = [w for w in clean_query.split() if len(w) >= 3 and w not in stop_words]
+    if tokens:
+        exact_matches = []
+        seen_ids = {r["id"] for r in results}
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            conditions = []
+            params = []
+            for t in tokens:
+                conditions.append("(LOWER(code) = ? OR LOWER(code) LIKE ? OR LOWER(name) LIKE ?)")
+                params.extend([t, f"%{t}%", f"%{t}%"])
+            if conditions:
+                cursor.execute(f"SELECT * FROM schemes WHERE {' OR '.join(conditions)}", params)
+                matched_rows = cursor.fetchall()
+                scored_rows = []
+                for r in matched_rows:
+                    item = dict(r)
+                    sid = item.get("id")
+                    if sid in seen_ids:
+                        continue
+                    c_code = (item.get("code") or "").lower()
+                    c_name = (item.get("name") or "").lower()
+                    token_hits = 0
+                    priority = 3
+                    for t in tokens:
+                        if t == c_code:
+                            priority = 1
+                            token_hits += 5
+                        elif t in c_code:
+                            priority = min(priority, 2)
+                            token_hits += 3
+                        elif t in c_name:
+                            priority = min(priority, 2)
+                            token_hits += 1
+                    scored_rows.append((token_hits, priority, item))
+
+                scored_rows.sort(key=lambda x: (-x[0], x[1]))
+                for _, _, item in scored_rows[:3]:
+                    sid = item.get("id")
+                    try:
+                        item["eligibility_criteria"] = json.loads(item["eligibility_criteria_json"])
+                    except Exception:
+                        item["eligibility_criteria"] = {}
+                    try:
+                        item["required_documents"] = json.loads(item["required_documents_json"])
+                    except Exception:
+                        item["required_documents"] = []
+                    item["id"] = sid
+                    item["scheme_id"] = sid
+                    item["match_score"] = 97.0
+                    item["match_percentage"] = "97%"
+                    exact_matches.append(item)
+                    seen_ids.add(sid)
+        if exact_matches:
+            results = exact_matches + [r for r in results if r["id"] not in {m["id"] for m in exact_matches}]
+
+    return results[:limit]

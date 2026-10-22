@@ -27,7 +27,7 @@ def _call_groq(prompt: str, system_prompt: Optional[str] = None, json_mode: bool
     messages.append({"role": "user", "content": prompt})
 
     # Try active high-performance models on this Groq account
-    candidate_models = ["openai/gpt-oss-20b", "qwen/qwen3.8-27b", "openai/gpt-oss-120b"]
+    candidate_models = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768", "openai/gpt-oss-20b", "qwen/qwen3.8-27b"]
     last_err = None
 
     for model_name in candidate_models:
@@ -130,51 +130,255 @@ def invoke_llm_json(prompt: str, system_prompt: Optional[str] = None) -> Dict[st
         return {"raw_response": raw, "error": "Failed to parse JSON"}
 
 
+def _parse_kb_schemes(system_prompt: Optional[str]) -> List[Dict[str, Any]]:
+    """Extracts structured schemes from system prompt knowledge base block."""
+    schemes = []
+    if not system_prompt or "[Official Knowledge Base" not in system_prompt:
+        return schemes
+    try:
+        kb_text = system_prompt.split("[Official Knowledge Base")[1]
+        blocks = kb_text.split("---")
+        for b in blocks:
+            b = b.strip()
+            if not b or "Scheme:" not in b:
+                continue
+            name_m = re.search(r"Scheme:\s*([^\n\r]+)", b)
+            if not name_m:
+                continue
+            full_name = name_m.group(1).strip()
+            code_m = re.search(r"\(([^)]+)\)$", full_name)
+            code = code_m.group(1).strip() if code_m else ""
+            name = full_name[:code_m.start()].strip() if code_m else full_name
+
+            min_m = re.search(r"Ministry:\s*([^\n\r]+)", b)
+            cat_m = re.search(r"Category:\s*([^\n\r]+)", b)
+            ben_m = re.search(r"Benefits:\s*([^\n\r]+)", b)
+            elig_m = re.search(r"Eligibility:\s*([^\n\r]+)", b)
+            docs_m = re.search(r"Required Documents:\s*([^\n\r]+)", b)
+            link_m = re.search(r"Official Link:\s*([^\n\r]+)", b)
+
+            elig_list = []
+            if elig_m:
+                raw_el = elig_m.group(1).strip()
+                try:
+                    elig_list = json.loads(raw_el.replace("'", '"'))
+                except Exception:
+                    raw_el = raw_el.strip("[]")
+                    elig_list = [x.strip(" '\"") for x in raw_el.split(",") if x.strip(" '\"")]
+
+            docs_list = []
+            if docs_m:
+                raw_dc = docs_m.group(1).strip()
+                try:
+                    docs_list = json.loads(raw_dc.replace("'", '"'))
+                except Exception:
+                    raw_dc = raw_dc.strip("[]")
+                    docs_list = [x.strip(" '\"") for x in raw_dc.split(",") if x.strip(" '\"")]
+
+            schemes.append({
+                "name": name,
+                "code": code,
+                "ministry": min_m.group(1).strip() if min_m else "Government of India",
+                "category": cat_m.group(1).strip() if cat_m else "Citizen Welfare",
+                "benefits": ben_m.group(1).strip() if ben_m else "",
+                "eligibility": [e for e in elig_list if e],
+                "required_documents": [d for d in docs_list if d],
+                "official_url": link_m.group(1).strip() if link_m else "https://www.myscheme.gov.in"
+            })
+    except Exception as e:
+        logger.warning(f"Error parsing KB schemes: {e}")
+    return schemes
+
+
 def _simulate_reasoning(prompt: str, system_prompt: Optional[str], json_mode: bool) -> str:
     """Provides high-quality realistic agent responses when API keys are not supplied."""
     p_lower = prompt.lower()
 
-    # Chatbot queries
+    # Chatbot queries (JanSetu Mitra)
     if "mitra" in (system_prompt or "").lower() or "chatbot" in p_lower or "ask" in p_lower:
-        if "svanidhi" in p_lower or "vendor" in p_lower or "loan" in p_lower:
+        # Extract citizen's current message
+        m_msg = re.search(r"Citizen's Current Message:\s*\n?(.*?)(?:\n\[|$)", prompt, re.DOTALL)
+        citizen_msg = m_msg.group(1).strip() if m_msg else prompt.strip()
+        c_lower = citizen_msg.lower()
+
+        # Check for simple greeting
+        if re.search(r"^(hi|hello|hey|namaste|pranam|good\s*(morning|afternoon|evening)|who are you|help|start)\b", c_lower) and len(c_lower.split()) <= 4:
             return (
-                "Namaste! **PM SVANidhi** provides collateral-free working capital loans of up to ₹50,000 for urban street vendors. "
-                "The 1st tranche is ₹10,000, 2nd tranche ₹20,000, and 3rd tranche ₹50,000 with a 7% interest subsidy! "
-                "You only need your Aadhaar, Bank Passbook, and Certificate of Vending (or Letter of Recommendation from your municipal council)."
+                "Namaste! I am JanSetu Mitra (जनसेतु मित्र), your personal AI Welfare Advisor.\n\n"
+                "I can assist you with:\n"
+                "• Scheme Discovery: Finding government schemes suited to your profile and need.\n"
+                "• Eligibility Criteria: Explaining age, income ceiling, and category requirements.\n"
+                "• Required Documents: Identifying all mandatory certificates and proofs.\n"
+                "• Application Process: Official portals, application forms, and guided workflows.\n\n"
+                "What can I help you with today? Feel free to ask about scholarships, health insurance (Ayushman Bharat), housing subsidies (PMAY), vendor/business loans (PM SVANidhi/Mudra), pensions, or farming assistance!"
             )
-        elif "kisan" in p_lower or "farmer" in p_lower:
+
+        # Check for pet / domestic animal queries (dog, cat, pet)
+        if any(w in c_lower for w in ["dog", "dogs", "cat", "cats", "pet", "pets", "puppy", "puppies", "kitten", "kittens"]):
             return (
-                "Namaste! **PM-KISAN** grants ₹6,000 per year directly to cultivable landholding farmer families in 3 equal installments of ₹2,000. "
-                "Key documents required: Aadhaar Card, Land Records (Khatauni/Khasra), and Aadhaar-seeded Bank Passbook."
+                "Namaste! Government welfare schemes in India are designed for citizen welfare "
+                "(such as scholarships, healthcare, housing, pensions, and livelihood loans) and agricultural livestock "
+                "(such as dairy cattle, buffaloes, sheep, poultry, and fisheries).\n\n"
+                "There are currently no Central or State government subsidy or welfare schemes for domestic household pets such as dogs or cats.\n\n"
+                "However, if you are looking for agricultural animal husbandry or dairy development schemes, "
+                "programs like the Rashtriya Gokul Mission and National Livestock Mission provide capital subsidies. "
+                "For citizen support, you can explore student scholarships, Ayushman Bharat health coverage, PMAY housing assistance, or PM SVANidhi loans!"
             )
-        elif "housing" in p_lower or "awas" in p_lower or "pmay" in p_lower:
-            return (
-                "Under **PMAY-Urban**, eligible EWS and LIG families receive up to ₹2.67 Lakh subsidy or financial grant to construct or purchase a pucca home. "
-                "The primary rule is that the family must not own a pucca house anywhere in India."
+
+        kb_schemes = _parse_kb_schemes(system_prompt)
+
+        # If schemes were retrieved from vector search
+        if kb_schemes:
+            s1 = kb_schemes[0]
+            s_name = s1["name"]
+            s_code = f" ({s1['code']})" if s1.get("code") else ""
+
+            # Check intent: Documents
+            if any(w in c_lower for w in ["document", "documents", "paper", "papers", "proof", "certificate", "certificates", "what docs", "docs", "what to bring", "upload"]):
+                docs = s1.get("required_documents") or ["Aadhaar Card", "Bank Account Passbook", "Income Certificate"]
+                docs_text = "\n".join(f"• {d}" for d in docs)
+                return (
+                    f"To apply for {s_name}{s_code}, please prepare the following mandatory documents:\n\n"
+                    f"{docs_text}\n\n"
+                    f"Checklist Guidance: Ensure your bank account is linked with your Aadhaar for direct benefit transfer (DBT). "
+                    f"You can also use JanSetu's Document Readiness Agent (Stage 4) to upload and automatically verify these documents!"
+                )
+
+            # Check intent: Eligibility
+            if any(w in c_lower for w in ["eligible", "eligibility", "qualify", "criteria", "rule", "rules", "who can apply", "can i apply", "income limit", "age limit", "requirement"]):
+                rules = s1.get("eligibility") or ["Applicant must satisfy statutory demographic and income ceiling requirements."]
+                rules_text = "\n".join(f"• {r}" for r in rules)
+                return (
+                    f"Statutory eligibility criteria for {s_name}{s_code}:\n\n"
+                    f"{rules_text}\n\n"
+                    f"• Category / Sector: {s1.get('category')}\n"
+                    f"• Ministry: {s1.get('ministry')}\n\n"
+                    f"You can also run our Eligibility Assessor Agent (Stage 3) in the AI Assistant to audit your profile with automated rule checks!"
+                )
+
+            # Check intent: Application procedure / How to apply
+            if any(w in c_lower for w in ["how to apply", "how do i apply", "apply", "application", "procedure", "process", "register", "registration", "portal", "website", "link"]):
+                portal = s1.get("official_url") or "https://www.myscheme.gov.in"
+                docs_brief = ", ".join(s1.get("required_documents", ["Aadhaar Card", "Bank Passbook"])[:3])
+                return (
+                    f"Application procedure for {s_name}{s_code}:\n\n"
+                    f"1. Assemble Required Proofs: Gather your {docs_brief}.\n"
+                    f"2. Official Portal: Access the designated portal at {portal} or visit your nearest Common Service Centre (CSC) / Municipal Office.\n"
+                    f"3. Submit Application: Fill in the citizen details, upload documents, and note down your reference number.\n\n"
+                    f"JanSetu Drafter: You can use our Application Drafter Agent (Stage 5) to automatically generate a pre-filled, compliant official application draft!"
+                )
+
+            # Check intent: Benefits / Subsidy / Money amount
+            if any(w in c_lower for w in ["benefit", "benefits", "amount", "how much", "subsidy", "money", "grant", "financial help", "payment", "paisa"]):
+                reply = (
+                    f"Benefits provided under {s_name}{s_code}:\n\n"
+                    f"• Core Benefit: {s1.get('benefits')}\n"
+                    f"• Implementing Ministry: {s1.get('ministry')}\n"
+                    f"• Target Sector: {s1.get('category')}\n\n"
+                )
+                rel_alts = [s for s in kb_schemes[1:2] if s.get("category") == s1.get("category")]
+                if rel_alts:
+                    s2 = rel_alts[0]
+                    reply += f"Related Initiative: {s2['name']} also provides: {s2.get('benefits')[:120]}...\n\n"
+                reply += "Would you like me to explain the eligibility rules or mandatory documents for this scheme?"
+                return reply
+
+            # General scheme response
+            reply = (
+                f"Namaste! Regarding your query on \"{citizen_msg}\", here is the best matching government welfare scheme:\n\n"
+                f"Scheme: {s_name}{s_code}\n"
+                f"• Ministry / Sector: {s1.get('ministry')} ({s1.get('category')})\n"
+                f"• Key Benefits: {s1.get('benefits')}\n"
             )
-        else:
-            return (
-                "Namaste! I am **JanSetu Mitra**, your AI citizen welfare advisor. "
-                "I can help you explore over 700+ Central and State welfare schemes, check eligibility rules, list mandatory documents, "
-                "and explain application procedures. Tell me about your occupation, family income, or specific financial need!"
+            if s1.get("eligibility"):
+                reply += f"• Eligibility: {'; '.join(s1['eligibility'][:2])}\n"
+            if s1.get("required_documents"):
+                reply += f"• Key Documents: {', '.join(s1['required_documents'][:3])}\n"
+
+            # Filter relevant alternatives (only same category)
+            rel_alts = [s for s in kb_schemes[1:3] if s.get("category") == s1.get("category")]
+            if rel_alts:
+                reply += "\nRelated Welfare Initiatives:\n"
+                for s_alt in rel_alts:
+                    reply += f"• {s_alt['name']}: {s_alt.get('benefits')[:90]}...\n"
+
+            reply += (
+                f"\nOfficial Portal: {s1.get('official_url', 'https://www.myscheme.gov.in')}\n"
+                f"Next Steps: You can also use our AI Assistant (Stages 1-5) to audit your eligibility and generate an official application draft."
             )
+            return reply
+
+        # Fallback if no schemes in knowledge base
+        return (
+            f"Namaste! Regarding \"{citizen_msg}\", JanSetu connects you to over 80+ Central and State welfare initiatives. "
+            f"Please mention your specific sector (e.g., student scholarship, farmer financial assistance, street vendor loan, health insurance, or pension) "
+            f"so I can provide precise eligibility rules and document requirements!"
+        )
 
     # Need Intake Agent
     if "intake" in (system_prompt or "").lower() or "need" in p_lower:
         if json_mode:
+            # Extract citizen query from prompt
+            m = re.search(r'Citizen\'s Plain Language Query:\s*\n?"([^"\n\r]+)"', prompt, re.DOTALL)
+            citizen_query = m.group(1).strip() if m else ""
+            if not citizen_query:
+                m2 = re.search(r'"([^"\n\r]{3,120})"', prompt)
+                citizen_query = m2.group(1).strip() if m2 else prompt[:80]
+
+            q_lower = citizen_query.lower()
+
+            if any(w in q_lower for w in ["scholarship", "college", "school", "education", "student", "study", "fee", "degree", "coaching", "tuition"]):
+                category = "Education & Learning"
+                intent = "Scholarship and Education Financial Assistance"
+                search_q = f"scholarship college university education student fee aid {citizen_query}"
+            elif any(w in q_lower for w in ["health", "hospital", "medical", "treatment", "ayushman", "doctor", "medicine", "surgery", "disease", "arogya", "illness", "swasth"]):
+                category = "Health & Wellness"
+                intent = "Medical Insurance and Healthcare Grant"
+                search_q = f"health insurance medical treatment hospital cashless treatment coverage {citizen_query}"
+            elif any(w in q_lower for w in ["house", "housing", "awas", "pucca", "home", "shelter", "roof", "makaan", "colony"]):
+                category = "Housing & Shelter"
+                intent = "Housing Grant and Pucca House Construction Subsidy"
+                search_q = f"housing subsidy pucca house construction assistance gramin urban awas {citizen_query}"
+            elif any(w in q_lower for w in ["vendor", "shop", "street", "cart", "thela", "hawker", "svanidhi", "working capital", "re-employment", "re-start"]):
+                category = "Micro-Enterprise"
+                intent = "Working Capital Loan and Collateral-Free Credit"
+                search_q = f"street vendor working capital loan collateral free pm svanidhi micro credit {citizen_query}"
+            elif any(w in q_lower for w in ["pension", "old age", "elderly", "senior", "widow", "vridha", "divyang", "disability", "handicap", "pensioner"]):
+                category = "Social Security"
+                intent = "Monthly Social Security Pension and Disability Allowance"
+                search_q = f"social security pension monthly financial support disability old age widow {citizen_query}"
+            elif any(w in q_lower for w in ["farmer", "farm", "crop", "kisan", "tractor", "seed", "fertilizer", "irrigation", "agriculture", "fasal", "dbt"]):
+                category = "Agriculture"
+                intent = "Direct Farm Income Support and Crop Protection"
+                search_q = f"farmer financial assistance direct benefit crop income support pm kisan {citizen_query}"
+            elif any(w in q_lower for w in ["women", "girl", "daughter", "maternity", "sukanya", "beti", "mahila", "shg", "self help"]):
+                category = "Social Welfare"
+                intent = "Women and Child Welfare Grant"
+                search_q = f"women welfare empowerment financial grant girl child education {citizen_query}"
+            elif any(w in q_lower for w in ["loan", "credit", "mudra", "subsidy", "finance", "business"]):
+                category = "Micro-Enterprise"
+                intent = "Business Credit and Entrepreneurship Subsidy"
+                search_q = f"collateral free business loan credit subsidy mudra {citizen_query}"
+            else:
+                category = "General Welfare"
+                intent = "Government Welfare Assistance"
+                search_q = citizen_query
+
             return json.dumps({
-                "need_summary": "Assistance identified based on citizen declaration.",
-                "identified_category": "Micro-Enterprise" if "vendor" in p_lower or "loan" in p_lower or "shop" in p_lower else ("Agriculture" if "farm" in p_lower or "crop" in p_lower else "Social Security"),
-                "detected_intent": "Financial support / loan / grant",
+                "need_summary": f"Identified {intent.lower()} requirement based on your request.",
+                "extracted_need": citizen_query,
+                "identified_category": category,
+                "detected_intent": intent,
                 "extracted_entities": {
-                    "assistance_type": "Working capital credit or direct benefit",
+                    "assistance_type": intent,
+                    "target_sector": category,
                     "priority": "High"
                 },
-                "semantic_search_query": "street vendor working capital loan collateral free pm svanidhi mudra" if "vendor" in p_lower or "loan" in p_lower else "farmer financial assistance direct benefit support"
+                "semantic_search_query": search_q
             })
 
     # Scheme Matcher Agent
-    if "matcher" in (system_prompt or "").lower() or "candidate" in (system_prompt or "").lower() or "jansetu" in (system_prompt or "").lower() or "sahayak" in (system_prompt or "").lower():
+    if "matcher" in (system_prompt or "").lower() or ("candidate" in (system_prompt or "").lower() and "scheme" in (system_prompt or "").lower()):
         if json_mode:
             ids = [int(x) for x in re.findall(r'"scheme_id":\s*(\d+)', prompt)]
             if not ids:
